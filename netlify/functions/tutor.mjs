@@ -89,6 +89,97 @@ const IMPORT_SYS = `
 - 텍스트가 IELTS Reading 지문·문제 형식이 아니거나 문제를 하나도 찾을 수 없으면, 다음만 출력한다: {"error":"이 텍스트에서 Reading 문제를 찾지 못했습니다. 지문과 문제(가능하면 정답 페이지)가 함께 포함된 페이지를 선택했는지 확인하세요."}
 `.trim();
 
+/* ---------- 책 전체 색인(목차) 프롬프트 ---------- */
+const BOOK_INDEX_SYS = `
+너는 IELTS 문제집(케임브리지 등) PDF의 페이지별 앞부분 요약을 받아, 어떤 페이지가 어느 Test·영역인지 목차를 만드는 색인기다.
+입력은 "P{번호}: {그 페이지 앞부분 텍스트}" 목록이며, 번호는 1부터 시작하는 페이지 순번이다.
+
+반드시 아래 JSON 하나만 출력한다. 코드펜스·설명 금지.
+
+{
+  "tests": [
+    {"n":1,
+     "listening":[[start,end]],
+     "reading":[[start,end]],
+     "writing":[[start,end]],
+     "speaking":[[start,end]]}
+  ],
+  "answerKey":[[start,end]],
+  "audioscript":[[start,end]]
+}
+
+규칙:
+- 페이지 번호는 입력의 P번호(1-기반)를 그대로 쓴다. 범위는 [시작,끝] 포함. 여러 구간이면 배열에 여러 개.
+- Test별로 각 영역이 시작·끝나는 페이지를 최대한 정확히 잡는다. 없으면 빈 배열 [].
+- Listening=Part/Section 1~4, reading=Reading Passage 1~3, writing=Writing Task 1~2, speaking=Part 1~3.
+- 정답(Answers/Answer key)과 오디오 대본(Audioscript/Listening script/Tapescript/Transcript)은 보통 책 뒤쪽에 몰려 있다. Test별이 아니라 문서 전체 기준 범위로 answerKey/audioscript에 넣는다.
+- 페이지 번호를 지어내 입력 범위를 벗어나지 않는다. 확실치 않으면 가장 그럴듯한 범위를 넣는다.
+- IELTS 문제집 구조가 전혀 아니면 {"error":"이 PDF에서 IELTS 시험 구조를 찾지 못했습니다."}만 출력.
+`.trim();
+
+/* ---------- Listening → CBT 구조화 프롬프트 ---------- */
+const LISTENING_IMPORT_SYS = `
+너는 IELTS Listening 시험지 텍스트를 CBT 데이터로 변환하는 파서다.
+입력은 한 Test의 Listening 문제(보통 Section/Part 1~4)와, 있다면 정답 키·오디오 대본이다.
+새 문제를 창작하지 말고 원문에 있는 것만 옮긴다.
+
+반드시 아래 JSON 하나만 출력한다. 코드펜스·설명 금지.
+
+{
+  "title":"Test N Listening",
+  "sections":[
+    {"n":1,"gi":"이 섹션 상황 설명(있으면)",
+     "groups":[
+       {"g":"Questions 1-6","gi":"지시문","type":"gap","summary":"노트/폼/표/요약 완성문(있을 때만)",
+        "qs":[{"n":1,"q":"문항 원문","opts":["A. ..","B. .."],"a":"정답","ev":"1"}]}
+     ]}
+  ]
+}
+
+규칙:
+- 각 섹션(1~4)의 문제를 sections에 순서대로 넣는다.
+- "type": gap(빈칸·폼·노트·표·요약 완성·단답) / mcq(객관식) / tfng(참/거짓) / matching(보기 목록에서 고르기 → opts로 표현, mcq처럼 취급).
+- gap 정답 "a"는 정답 단어(들). 허용 답이 여럿이면 "a|b". 숫자·철자 원문 그대로.
+- mcq/matching은 "opts"에 보기 전체, "a"는 opts 중 하나와 완전히 동일하게.
+- "n"은 원문 문항 번호(1~40 등) 그대로, 전체에서 유일.
+- "ev"는 이 문항이 속한 섹션 번호(문자열).
+- 정답 키가 입력에 있으면 반드시 그 정답을 쓴다. 없으면 오디오 대본 근거로 채운다. 둘 다 없으면 빈 문자열.
+- 영어 원문은 번역하지 않는다.
+- Listening 문제를 찾지 못하면 {"error":"이 텍스트에서 Listening 문제를 찾지 못했습니다."}만 출력.
+`.trim();
+
+/* ---------- Writing 과제 추출 프롬프트 ---------- */
+const WRITING_IMPORT_SYS = `
+너는 IELTS Writing 시험지 텍스트에서 과제 문제만 추출하는 파서다.
+반드시 아래 JSON 하나만 출력한다. 코드펜스·설명 금지.
+
+{"task1":{"prompt":"Task 1 문제 원문(지시문 포함)","chartNote":"그림·차트·표가 있으면 그 내용을 글로 설명(없으면 빈 문자열)"},
+ "task2":{"prompt":"Task 2 문제 원문 전체"}}
+
+규칙:
+- 원문 지시문("You should spend about 20 minutes...", "Write at least 150/250 words" 등)까지 포함해 그대로 옮긴다. 번역 금지.
+- Task 1은 보통 그림/차트/표를 동반한다. PDF 텍스트에는 이미지가 없으므로, 캡션·축·수치 등 텍스트로 남은 정보를 chartNote에 담는다. 없으면 빈 문자열.
+- 해당 Task가 없으면 그 prompt를 빈 문자열로 둔다.
+- Writing 과제를 찾지 못하면 {"error":"이 텍스트에서 Writing 과제를 찾지 못했습니다."}만 출력.
+`.trim();
+
+/* ---------- Speaking 자료 추출 프롬프트 ---------- */
+const SPEAKING_IMPORT_SYS = `
+너는 IELTS Speaking 시험지 텍스트에서 파트별 질문을 추출하는 파서다.
+반드시 아래 JSON 하나만 출력한다. 코드펜스·설명 금지.
+
+{"parts":[
+  {"part":"1","cue":"Part 1 주제와 질문들 원문"},
+  {"part":"2","cue":"Part 2 큐카드 원문 전체 (Describe... You should say: ...)"},
+  {"part":"3","cue":"Part 3 토론 질문들 원문"}
+]}
+
+규칙:
+- 각 파트의 원문 질문을 그대로 옮긴다. 번역 금지.
+- 없는 파트는 빼도 된다.
+- Speaking 자료를 찾지 못하면 {"error":"이 텍스트에서 Speaking 자료를 찾지 못했습니다."}만 출력.
+`.trim();
+
 /* ---------- 태스크별 시스템 프롬프트 ---------- */
 const SYSTEMS = {
   writing: `
@@ -137,7 +228,11 @@ ${SHAPE}`,
 
 ${SHAPE}`,
 
-  import: IMPORT_SYS
+  import: IMPORT_SYS,
+  book_index: BOOK_INDEX_SYS,
+  listening_import: LISTENING_IMPORT_SYS,
+  writing_import: WRITING_IMPORT_SYS,
+  speaking_import: SPEAKING_IMPORT_SYS
 };
 
 /* ---------- 사용자 메시지 조립 ---------- */
@@ -172,14 +267,23 @@ function buildUserMessage(task, p) {
     ].join("\n\n");
   }
 
-  if (task === "import") {
+  if (task === "import" || task === "listening_import" || task === "writing_import" || task === "speaking_import") {
     return `아래는 PDF 문제집에서 추출한 원문 텍스트다. 위 스키마대로 변환하라.\n\n[추출 텍스트]\n${clip(p.text, 45000)}`;
+  }
+
+  if (task === "book_index") {
+    return `아래는 책 각 페이지의 앞부분 요약이다. 위 스키마대로 목차 색인을 만들라.\n\n${clip(p.text, 45000)}`;
   }
   return null;
 }
 
+const EXTRACT_TASKS = new Set(["import", "book_index", "listening_import", "writing_import", "speaking_import"]);
+
 function maxTokensFor(task) {
-  return task === "import" ? 8000 : task === "reading" ? 1200 : 2500;
+  if (task === "import" || task === "listening_import") return 8000;
+  if (task === "book_index") return 4000;
+  if (task === "writing_import" || task === "speaking_import") return 3000;
+  return task === "reading" ? 1200 : 2500;
 }
 
 /* ---------- 프로바이더별 호출 ---------- */
@@ -200,7 +304,7 @@ async function callAnthropic({ system, userMsg, task }) {
       body: JSON.stringify({
         model: process.env.TUTOR_MODEL || "claude-sonnet-5",
         max_tokens: maxTokensFor(task),
-        temperature: task === "import" ? 0 : 0.2,
+        temperature: EXTRACT_TASKS.has(task) ? 0 : 0.2,
         system,
         messages: [{ role: "user", content: userMsg }]
       })
@@ -231,7 +335,7 @@ async function callGemini({ system, userMsg, task }) {
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
   const generationConfig = {
-    temperature: task === "import" ? 0 : 0.2,
+    temperature: EXTRACT_TASKS.has(task) ? 0 : 0.2,
     maxOutputTokens: maxTokensFor(task),
     responseMimeType: "application/json"
   };
