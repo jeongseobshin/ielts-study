@@ -330,4 +330,9 @@ export default async (req) => {
   }), { status: 200, headers: cors });
 };
 
-export const config = { path: "/api/tutor" };
+/*
+ * 경로 라우팅은 netlify.toml의 [[redirects]] (/api/tutor → 이 함수)로 처리한다.
+ * 코드 안 config.path 지정은 일부 배포 환경에서 반영되지 않아 /api/tutor가
+ * 404가 되는 경우가 있어, 명시적 리라이트 방식으로 통일했다.
+ * 이 함수의 기본 엔드포인트는 /.netlify/functions/tutor 이다.
+ */

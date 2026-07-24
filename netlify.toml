@@ -12,6 +12,15 @@
   # 계속 스캔·보호된다.
   SECRETS_SCAN_OMIT_KEYS = "AI_PROVIDER,TUTOR_MODEL,GEMINI_MODEL"
 
+# 앱은 /api/tutor 로 튜터 함수를 호출한다. 함수의 기본 엔드포인트
+# (/.netlify/functions/tutor)로 명시적으로 리라이트한다. 이 방식이 코드 안의
+# config.path 지정보다 배포 환경에 상관없이 안정적으로 동작한다.
+[[redirects]]
+  from = "/api/tutor"
+  to = "/.netlify/functions/tutor"
+  status = 200
+  force = true
+
 [[headers]]
   for = "/*"
   [headers.values]
