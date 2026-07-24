@@ -105,7 +105,8 @@ const BOOK_INDEX_SYS = `
      "speaking":[[start,end]]}
   ],
   "answerKey":[[start,end]],
-  "audioscript":[[start,end]]
+  "audioscript":[[start,end]],
+  "sampleAnswers":[[start,end]]
 }
 
 규칙:
@@ -113,6 +114,7 @@ const BOOK_INDEX_SYS = `
 - Test별로 각 영역이 시작·끝나는 페이지를 최대한 정확히 잡는다. 없으면 빈 배열 [].
 - Listening=Part/Section 1~4, reading=Reading Passage 1~3, writing=Writing Task 1~2, speaking=Part 1~3.
 - 정답(Answers/Answer key)과 오디오 대본(Audioscript/Listening script/Tapescript/Transcript)은 보통 책 뒤쪽에 몰려 있다. Test별이 아니라 문서 전체 기준 범위로 answerKey/audioscript에 넣는다.
+- sampleAnswers = Writing/Speaking의 공식 모범답안(Model/Sample answer)과 시험관 코멘트(examiner's comment)가 실린 페이지. 있으면 문서 전체 기준 범위로 넣고, 없으면 빈 배열 [].
 - 페이지 번호를 지어내 입력 범위를 벗어나지 않는다. 확실치 않으면 가장 그럴듯한 범위를 넣는다.
 - IELTS 문제집 구조가 전혀 아니면 {"error":"이 PDF에서 IELTS 시험 구조를 찾지 못했습니다."}만 출력.
 `.trim();
@@ -150,16 +152,18 @@ const LISTENING_IMPORT_SYS = `
 
 /* ---------- Writing 과제 추출 프롬프트 ---------- */
 const WRITING_IMPORT_SYS = `
-너는 IELTS Writing 시험지 텍스트에서 과제 문제만 추출하는 파서다.
+너는 IELTS Writing 시험지 텍스트에서 과제와, (있다면) 그 책의 공식 모범답안·시험관 코멘트를 추출하는 파서다.
 반드시 아래 JSON 하나만 출력한다. 코드펜스·설명 금지.
 
-{"task1":{"prompt":"Task 1 문제 원문(지시문 포함)","chartNote":"그림·차트·표가 있으면 그 내용을 글로 설명(없으면 빈 문자열)"},
- "task2":{"prompt":"Task 2 문제 원문 전체"}}
+{"task1":{"prompt":"Task 1 문제 원문(지시문 포함)","chartNote":"그림·차트·표 정보(없으면 빈 문자열)","model":"이 책의 공식 모범답안 원문(있으면 그대로, 없으면 빈 문자열)","comment":"시험관 코멘트 원문(있으면 그대로, 없으면 빈 문자열)"},
+ "task2":{"prompt":"Task 2 문제 원문 전체","model":"공식 모범답안 원문(없으면 빈 문자열)","comment":"시험관 코멘트 원문(없으면 빈 문자열)"}}
 
 규칙:
 - 원문 지시문("You should spend about 20 minutes...", "Write at least 150/250 words" 등)까지 포함해 그대로 옮긴다. 번역 금지.
 - Task 1은 보통 그림/차트/표를 동반한다. PDF 텍스트에는 이미지가 없으므로, 캡션·축·수치 등 텍스트로 남은 정보를 chartNote에 담는다. 없으면 빈 문자열.
-- 해당 Task가 없으면 그 prompt를 빈 문자열로 둔다.
+- "model"(모범답안)과 "comment"(시험관 코멘트)는 입력 텍스트(정답·샘플 페이지 포함)에 그 내용이 실제로 있을 때만 원문 그대로 채운다. 없으면 반드시 빈 문자열. 절대 지어내지 않는다.
+- model/comment가 어느 Task(1/2)의 것인지 본문 표시(예: "Sample answer for Task 2")로 판별해 해당 Task에 넣는다.
+- 해당 Task 자체가 없으면 그 prompt를 빈 문자열로 둔다.
 - Writing 과제를 찾지 못하면 {"error":"이 텍스트에서 Writing 과제를 찾지 못했습니다."}만 출력.
 `.trim();
 
@@ -282,7 +286,8 @@ const EXTRACT_TASKS = new Set(["import", "book_index", "listening_import", "writ
 function maxTokensFor(task) {
   if (task === "import" || task === "listening_import") return 8000;
   if (task === "book_index") return 4000;
-  if (task === "writing_import" || task === "speaking_import") return 3000;
+  if (task === "writing_import") return 6000;
+  if (task === "speaking_import") return 3000;
   return task === "reading" ? 1200 : 2500;
 }
 
