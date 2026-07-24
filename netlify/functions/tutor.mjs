@@ -1,0 +1,211 @@
+/**
+ * IELTS AI 튜터 프록시
+ *
+ * 왜 서버 함수가 필요한가:
+ *  1) API 키를 브라우저에 노출하지 않기 위해 (env var로만 읽음)
+ *  2) api.anthropic.com은 브라우저 직접 호출 시 CORS로 막히기 때문
+ *  3) 시스템 프롬프트를 서버에 고정해, 공개 URL이 범용 챗봇으로 악용되는 것을 막기 위해
+ *
+ * 필요한 환경변수 (Netlify → Site configuration → Environment variables):
+ *   ANTHROPIC_API_KEY   필수. https://console.anthropic.com 에서 발급
+ *   TUTOR_MODEL         선택. 기본 claude-sonnet-5
+ *   TUTOR_PASSCODE      선택. 설정하면 이 값을 아는 사람만 사용 가능
+ */
+
+const API_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2023-06-01";
+const CAUSES = ["어휘 모름", "패러프레이즈", "시간 부족", "함정", "철자·형태"];
+
+/* ---------- 공통 출력 규약 ---------- */
+const SHAPE = `
+반드시 아래 JSON 객체 **하나만** 출력한다. 마크다운 코드펜스, 설명, 인사말을 절대 붙이지 않는다.
+
+{
+  "verdict": "핵심을 짚는 한 문장. 한국어.",
+  "bands": [{"label":"문자열","score":6.5,"comment":"한 문장 근거"}],
+  "overall": 6.5,
+  "fixes": [{"issue":"무엇이 문제인가","why":"왜 감점 요인인가","before":"원문 그대로","after":"고친 문장"}],
+  "tips": ["다음에 같은 유형을 만났을 때 쓸 구체적 전략 한 줄"],
+  "notes": [{"area":"Reading","cause":"함정","note":"오답노트에 남길 한 문장"}]
+}
+
+규칙:
+- "cause"는 반드시 다음 중 하나: ${CAUSES.join(" / ")}
+- "area"는 반드시 다음 중 하나: Listening / Reading / Writing / Speaking
+- "notes"는 1~3개. 사용자가 실제로 반복할 실수만 남긴다. 일반론 금지.
+- "fixes"의 "before"는 사용자가 실제로 쓴 표현을 그대로 인용한다. 지어내지 않는다.
+- 해설·조언은 모두 한국어로 쓰되, 영어 예문과 문법 용어는 영어 그대로 둔다.
+- 칭찬을 위한 칭찬을 하지 않는다. 점수를 실제보다 후하게 주지 않는다.
+`.trim();
+
+/* ---------- 태스크별 시스템 프롬프트 ---------- */
+const SYSTEMS = {
+  writing: `
+너는 IELTS Writing 공식 채점 기준(Band Descriptors, public version)에 정통한 채점관이다.
+응시자는 현재 6.0~6.5 수준이며 한 달 뒤 시험에서 Overall 7.0을 목표로 한다.
+
+채점:
+- 4개 기준을 각각 0.5 단위로 채점한다: Task Response(또는 Task Achievement), Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy.
+- overall은 네 점수의 평균을 0.5 단위로 반올림한 값이다.
+- 실제 시험은 짜다. 6.5를 줄지 7.0을 줄지 망설여지면 낮은 쪽을 준다. 후한 점수는 응시자에게 해롭다.
+- 단어 수 미달(Task 1은 150, Task 2는 250)이면 Task Response에서 반드시 감점하고 verdict에 명시한다.
+
+피드백:
+- "fixes"는 3~5개. 점수에 가장 큰 영향을 주는 순서로 정렬한다.
+- 사소한 오타보다 반복되는 구조적 문제(입장 불명확, 문단에 중심 문장 없음, 예시 없음, 같은 문형 반복)를 우선한다.
+- "after"는 응시자의 현재 수준에서 실제로 쓸 수 있는 문장으로 고친다. 밴드 9 문장으로 바꿔놓지 않는다.
+- "tips"는 2~3개. 이번 글에만 해당하는 게 아니라 다음 글에서 재사용할 수 있는 규칙으로 쓴다.
+- 암기 템플릿 표현("In this ever-changing modern world" 등)을 발견하면 반드시 지적한다. 실제 시험에서 감점 요인이다.
+
+${SHAPE}`,
+
+  reading: `
+너는 IELTS Reading 문제 유형별 함정 구조를 가르치는 튜터다.
+응시자가 틀린 문항 하나를 받아, 왜 틀렸는지와 다음에 어떻게 다르게 접근할지를 가르친다.
+
+- "bands"와 "overall"은 빈 배열과 null로 둔다. 이 태스크는 채점이 아니다.
+- "verdict": 왜 오답인지 한 문장. 정답 근거가 지문의 어느 부분인지 짚는다.
+- "fixes": 1~2개. "before"에는 응시자가 고른 선택지, "after"에는 정답과 그 근거를 넣는다.
+- "tips": 이 문제 유형(True/False/Not Given, Matching Headings, Summary Completion 등)에서 통하는 일반 전략 1~2개.
+- True/False/Not Given이면 False(지문이 반대로 말함)와 Not Given(지문에 언급 자체가 없음)의 차이를 이 문항에 빗대어 설명한다.
+- 응시자가 지문 대신 상식이나 배경지식으로 판단했는지 판별하고, 그렇다면 지적한다.
+- 지문 원문을 길게 옮겨 적지 않는다. 근거는 짧게 인용하거나 요약한다.
+
+${SHAPE}`,
+
+  speaking: `
+너는 IELTS Speaking 시험관이다. 응시자가 자신의 답변을 옮겨 적은 스크립트를 받는다.
+스크립트에는 발음·억양 정보가 없으므로 Pronunciation은 채점하지 않는다.
+
+- "bands"는 3개만: Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy.
+- "overall"은 이 3개의 평균을 0.5 단위로 반올림하되, verdict에 "발음 미반영 추정치"임을 밝힌다.
+- Part 2라면 2분 분량(대략 220~300단어)에 못 미치는지 확인하고, 부족하면 지적한다.
+- 같은 표현 반복, 지나치게 짧은 답변, 질문에서 벗어난 내용을 우선 지적한다.
+- "tips"에는 다음 답변에서 바로 쓸 수 있는 확장 표현틀을 포함한다.
+- 문어체로 고쳐주지 않는다. Speaking은 자연스러운 구어가 정답이다.
+
+${SHAPE}`
+};
+
+/* ---------- 사용자 메시지 조립 ---------- */
+function buildUserMessage(task, p) {
+  const clip = (s, n) => String(s ?? "").slice(0, n);
+
+  if (task === "writing") {
+    return [
+      `[유형] ${p.taskType === "task1" ? "Academic Task 1 (최소 150단어)" : "Task 2 (최소 250단어)"}`,
+      `[문제]\n${clip(p.prompt, 1200)}`,
+      p.chartNote ? `[시각자료 설명]\n${clip(p.chartNote, 800)}` : "",
+      `[응시자 답안 · ${String(p.essay || "").trim().split(/\s+/).filter(Boolean).length}단어]\n${clip(p.essay, 9000)}`
+    ].filter(Boolean).join("\n\n");
+  }
+
+  if (task === "reading") {
+    return [
+      `[문제 유형] ${clip(p.qtype, 80)}`,
+      `[문항] ${clip(p.question, 800)}`,
+      p.choices ? `[선택지] ${clip(p.choices, 800)}` : "",
+      `[응시자 답] ${clip(p.userAnswer, 200) || "(무응답)"}`,
+      `[정답] ${clip(p.correctAnswer, 200)}`,
+      `[지문 근거 부분]\n${clip(p.evidence, 1500)}`
+    ].filter(Boolean).join("\n");
+  }
+
+  if (task === "speaking") {
+    return [
+      `[Part ${clip(p.part, 4)}]`,
+      `[질문/큐카드]\n${clip(p.cue, 800)}`,
+      `[응시자 스크립트]\n${clip(p.transcript, 6000)}`
+    ].join("\n\n");
+  }
+  return null;
+}
+
+/* ---------- 핸들러 ---------- */
+export default async (req) => {
+  const cors = {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+    "access-control-allow-headers": "content-type",
+    "access-control-allow-methods": "POST, OPTIONS"
+  };
+  const fail = (status, msg) =>
+    new Response(JSON.stringify({ error: msg }), { status, headers: cors });
+
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (req.method !== "POST") return fail(405, "POST만 허용됩니다.");
+
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return fail(500, "서버에 ANTHROPIC_API_KEY가 설정되지 않았습니다. Netlify → Site configuration → Environment variables에서 추가한 뒤 재배포하세요.");
+  }
+
+  let body;
+  try { body = await req.json(); } catch { return fail(400, "요청 본문이 올바른 JSON이 아닙니다."); }
+
+  const gate = process.env.TUTOR_PASSCODE;
+  if (gate && body.passcode !== gate) return fail(401, "패스코드가 올바르지 않습니다.");
+
+  const system = SYSTEMS[body.task];
+  if (!system) return fail(400, "알 수 없는 task입니다. writing / reading / speaking 중 하나여야 합니다.");
+
+  const userMsg = buildUserMessage(body.task, body.payload || {});
+  if (!userMsg) return fail(400, "요청 내용을 조립하지 못했습니다.");
+
+  let res, data;
+  try {
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": ANTHROPIC_VERSION
+      },
+      body: JSON.stringify({
+        model: process.env.TUTOR_MODEL || "claude-sonnet-5",
+        max_tokens: body.task === "reading" ? 1200 : 2500,
+        temperature: 0.2,
+        system,
+        messages: [{ role: "user", content: userMsg }]
+      })
+    });
+    data = await res.json();
+  } catch (e) {
+    return fail(502, "Anthropic API에 연결하지 못했습니다: " + e.message);
+  }
+
+  if (!res.ok) {
+    const m = data?.error?.message || "알 수 없는 오류";
+    if (res.status === 401) return fail(401, "API 키가 유효하지 않습니다. 키를 다시 확인하세요.");
+    if (res.status === 429) return fail(429, "요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
+    if (res.status === 400 && /model/i.test(m)) {
+      return fail(400, `모델 이름이 올바르지 않습니다 (${m}). 환경변수 TUTOR_MODEL을 현재 사용 가능한 모델로 바꾸세요.`);
+    }
+    return fail(res.status, m);
+  }
+
+  const text = (data.content || [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .replace(/^\s*```(?:json)?/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const s = text.indexOf("{"), e = text.lastIndexOf("}");
+    if (s > -1 && e > s) { try { parsed = JSON.parse(text.slice(s, e + 1)); } catch {} }
+  }
+  if (!parsed) return fail(502, "튜터 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
+
+  return new Response(JSON.stringify({
+    ok: true,
+    result: parsed,
+    usage: data.usage || null
+  }), { status: 200, headers: cors });
+};
+
+export const config = { path: "/api/tutor" };
