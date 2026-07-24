@@ -487,6 +487,15 @@ details .body strong{color:var(--ink)}
 }
 .pdf-saved .nm{color:var(--ink);font-weight:500}
 
+/* AI 없이 풀기 (Cambridge) */
+.manual-box{margin-top:18px;border:1px solid var(--rule);border-left:3px solid var(--pass);border-radius:3px;background:var(--paper);padding:16px 18px}
+.manual-h{font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--ink);margin-bottom:8px}
+.manual-d{font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 14px}
+.manual-d code,.manual-box code{font-family:var(--f-mono);font-size:12px;background:var(--card);border:1px solid var(--rule);border-radius:2px;padding:1px 5px}
+.manual-key{width:100%;min-height:120px;resize:vertical;font-family:var(--f-mono);font-size:13px;line-height:1.7;padding:10px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--card);color:var(--ink)}
+.manual-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:12px}
+.manual-hint{font-size:12px;color:var(--ink-soft);flex:1 1 200px;line-height:1.5}
+
 /* ---------- 책(ZIP) 워크스페이스 ---------- */
 .book-info{
   margin:14px 0 12px;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.04em;
@@ -857,6 +866,21 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
     <button class="btn solid" id="pdfConvert">선택 페이지 → AI로 CBT 변환</button>
   </div>
   <div class="pdf-text" id="pdfText" hidden></div>
+
+  <!-- AI 없이 풀기 (Cambridge 모드) -->
+  <div class="manual-box">
+    <div class="manual-h">📘 AI 없이 풀기 — Cambridge 모드</div>
+    <p class="manual-d">AI를 전혀 쓰지 않습니다. 책의 <strong>정답 키만 붙여넣으면</strong> 답안지로 즉시 채점됩니다. 문제는 위에서 연 PDF(또는 실물 책)를 보고 풀고, 각 번호의 답을 입력하세요. 리스닝은 ZIP의 오디오도 재생됩니다. (인터넷·API 불필요, 무료 티어 한도와 무관)</p>
+    <label class="fl" for="manualKey">정답 키 붙여넣기 — 한 줄에 “번호 정답” (예: <code>1 B</code> · <code>7 NOT GIVEN</code> · <code>11 albedo</code>)</label>
+    <textarea id="manualKey" class="manual-key" placeholder="1 A&#10;2 TRUE&#10;3 albedo&#10;7 NOT GIVEN&#10;… 책 정답 페이지의 답을 그대로 붙여넣기 (여러 정답은 albedo/sky 처럼 / 로 구분)"></textarea>
+    <div class="manual-row">
+      <span id="manualAudioWrap" hidden><label class="fl" for="manualAudioSel">리스닝 오디오</label>
+        <select id="manualAudioSel"></select></span>
+      <button class="btn solid" id="manualStart">답안지로 CBT 시작</button>
+      <span class="manual-hint">지문/문제 텍스트는 위 ‘선택 페이지’(PDF) 또는 업로드한 책에서 자동으로 채워집니다.</span>
+    </div>
+    <div class="tutor-state" id="manualState"></div>
+  </div>
 
   <div class="pdf-saved" id="pdfSaved" hidden></div>
 </section>
@@ -2271,6 +2295,10 @@ function buildPassage(){
       });
       p.appendChild(el("p","src","실제 시험은 한 번만 들려줍니다. 처음엔 멈추지 말고 끝까지 들어보세요."));
     }
+    // 수동(정답지) 리스닝이면 추출한 문제 텍스트도 함께 보여준다
+    (PASSAGE.paras||[]).forEach(function(x){
+      var d=el("p","para"); d.appendChild(document.createTextNode(x[1])); p.appendChild(d);
+    });
     return;
   }
 
@@ -2789,6 +2817,65 @@ document.getElementById("pdfPreview").addEventListener("click",function(){
 });
 document.getElementById("pdfConvert").addEventListener("click",convertSelected);
 
+/* ===== AI 없이 풀기: 정답 키만으로 답안지 채점(Cambridge 모드) ===== */
+function parseKey(txt){
+  var ans={}, lines=String(txt||"").split(/\r?\n/), got=0;
+  lines.forEach(function(line){
+    var m=/^\s*(\d{1,3})\s*[\.\):\-]?\s+(.+?)\s*$/.exec(line);
+    if(m){ ans[+m[1]]=cleanAns(m[2]); got++; }
+  });
+  if(got<2){   // 한 줄 blob로 붙여넣은 경우 토큰 파싱
+    ans={};
+    var re=/(\d{1,3})\s*[\.\):\-]?\s*(NOT\s+GIVEN|[A-Za-z][A-Za-z'’\/\-]*)/gi, m2;
+    while((m2=re.exec(txt))){ ans[+m2[1]]=cleanAns(m2[2]); }
+  }
+  return ans;
+}
+function cleanAns(s){
+  s=String(s).replace(/\s+/g," ").trim();
+  // 복수 정답 표기 "a/b", "a or b" → 채점 엔진의 "a|b"로
+  s=s.replace(/\s+or\s+/gi,"|").replace(/\s*\/\s*/g,"|");
+  return s;
+}
+function populateManualAudio(){
+  var wrap=document.getElementById("manualAudioWrap"), sel=document.getElementById("manualAudioSel");
+  var tests=[];
+  (BOOK.audioNames||[]).forEach(function(nm){
+    var m=/t0*(\d+)\s*[-_ ]?s0*\d+\.mp3$/i.exec(baseName(nm));
+    if(m && tests.indexOf(+m[1])<0) tests.push(+m[1]);
+  });
+  tests.sort(function(a,b){return a-b;});
+  if(!tests.length){ wrap.hidden=true; return; }
+  wrap.hidden=false; sel.innerHTML="";
+  var o0=document.createElement("option"); o0.value=""; o0.textContent="오디오 없음(리딩)"; sel.appendChild(o0);
+  tests.forEach(function(t){ var o=document.createElement("option"); o.value=String(t); o.textContent="Test "+t+" 리스닝"; sel.appendChild(o); });
+}
+function startManual(){
+  var st=document.getElementById("manualState");
+  var key=parseKey(document.getElementById("manualKey").value);
+  var nums=Object.keys(key).map(Number).sort(function(a,b){return a-b;});
+  if(nums.length<2){ errState(st,"정답 키를 인식하지 못했습니다. ‘1 B’처럼 한 줄에 ‘번호 정답’ 형식으로 붙여넣으세요."); return; }
+  // 지문/문제 텍스트: 선택 페이지(단일 PDF) 또는 업로드한 책 전체(요약)
+  var text="";
+  if(PDFPAGES && PDFPAGES.length && PDFSEL && PDFSEL.size) text=selectedText();
+  else if(PDFPAGES && PDFPAGES.length) text=PDFPAGES.filter(Boolean).join("\n\n");
+  else if(BOOK && BOOK.pages) text=BOOK.pages.filter(Boolean).join("\n\n").slice(0,20000);
+  var audioTest=document.getElementById("manualAudioSel").value;
+  var audio = audioTest ? buildAudioUrls(+audioTest) : [];
+  var qs=nums.map(function(n){ return {n:n, q:"문항 "+n, a:String(key[n]), ev:""}; });
+  var test={
+    kind: audio.length ? "listening" : "reading",
+    passage:{ title:(audio.length?("Test "+audioTest+" Listening"):"내 문제집")+" · 정답지 채점", src:"Cambridge 모드 · AI 미사용", paras: text?[["·",text]]:[] },
+    headings:[], questions:[{ g:"정답지 채점 ("+nums.length+"문항)", gi:"문제는 위 지문/PDF(또는 실물 책)를 보고 풀고, 각 번호의 답을 입력하세요.", type:"gap", qs:qs }],
+    audio:audio, script:"", sample:false, imported:true, manual:true
+  };
+  if(S.fbmode!=="cambridge"){ S.fbmode="cambridge"; save(); renderFbToggle(); }  // 이 방식은 AI 없이 공식 정답으로 채점
+  loadTest(test);
+  pdfDone("정답지 CBT 준비 완료 — "+nums.length+"문항. 위에서 문제를 보고 답을 입력한 뒤 ‘제출·채점’을 누르세요. (AI 미사용)");
+  scrollToPanel(/CBT 리딩/);
+}
+document.getElementById("manualStart").addEventListener("click",startManual);
+
 /* ================= Cambridge 책(ZIP) ================= */
 var FFLATE_URL="https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js";
 var _fflate=null;
@@ -2831,6 +2918,7 @@ function renderBookInfo(){
   document.getElementById("bookInfo").textContent =
     "PDF "+(BOOK.pages?BOOK.pages.length:0)+"페이지 · 리스닝 오디오 "+BOOK.audioNames.length+"개 인식됨";
   document.getElementById("bookWrap").hidden=false;
+  populateManualAudio();
 }
 
 function runBookIndex(){
