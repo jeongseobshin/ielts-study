@@ -409,6 +409,33 @@ details .body strong{color:var(--ink)}
 }
 .pdf-saved .nm{color:var(--ink);font-weight:500}
 
+/* ---------- 책(ZIP) 워크스페이스 ---------- */
+.book-info{
+  margin:14px 0 12px;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.04em;
+  color:var(--ink);border:1px solid var(--rule);border-left:3px solid var(--pass);
+  border-radius:2px;background:var(--paper);padding:9px 12px;
+}
+.book-grid{display:flex;flex-direction:column;gap:6px}
+.book-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.book-tn{
+  flex:0 0 66px;font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--ink);
+}
+.book-cell{
+  flex:1 1 auto;min-width:96px;padding:9px 10px;border:1px solid var(--rule);border-radius:2px;
+  background:var(--card);font-size:12.5px;color:var(--ink);cursor:pointer;transition:all .12s;
+}
+.book-cell:hover:not(:disabled){border-color:var(--ink);background:var(--paper)}
+.book-cell.off,.book-cell:disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through}
+.book-note{font-size:12px;color:var(--ink-soft);margin:12px 0 0;line-height:1.55}
+
+/* 리스닝 오디오 플레이어 */
+.aud{margin:0 0 16px}
+.aud-lb{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);margin-bottom:6px;
+}
+.aud audio{width:100%;height:34px}
+
 /* ---------- writing lab ---------- */
 .wl-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
 .prompt-box{
@@ -574,21 +601,27 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   </section>
 </div>
 
-<!-- ============ CBT READING ============ -->
-<!-- ============ PDF 문제집 (내 파일) ============ -->
+<!-- ============ 내 문제집 (PDF · ZIP) ============ -->
 <section class="panel" id="pdfPanel">
-  <h2>내 문제집 (PDF)</h2>
-  <p class="sub">직접 구매·보유한 IELTS PDF(예: 케임브리지 공식 기출 17·18·19·20·21)를 올리면 <strong>브라우저 안에서만</strong> 텍스트를 읽어 실제 CBT처럼 풀 수 있습니다. 파일은 서버에 저장·전송되지 않습니다. 저작권 때문에 문제집 자체는 앱에 포함하지 않으며, <strong>본인이 적법하게 보유한 파일만</strong> 사용하세요.</p>
+  <h2>내 문제집 (PDF · ZIP)</h2>
+  <p class="sub">직접 구매·보유한 IELTS 파일을 올리면 <strong>브라우저 안에서만</strong> 읽어 실제 CBT처럼 풉니다. <strong>PDF 한 개</strong>를 올리면 그 지문을, <strong>ZIP</strong>(책 PDF + 리스닝 오디오)을 올리면 <strong>Listening·Reading·Writing·Speaking 전부</strong>를 Test별로 학습할 수 있습니다. 파일은 서버에 저장·전송되지 않고, 구조화에 필요한 텍스트만 채점 API로 보냅니다. 저작권 때문에 문제집은 앱에 포함하지 않으며 <strong>본인이 적법하게 보유한 파일만</strong> 쓰세요.</p>
 
   <div class="pdf-drop">
-    <input type="file" id="pdfFile" accept="application/pdf" hidden>
-    <button class="btn solid" id="pdfPick">PDF 파일 선택</button>
-    <span class="pdf-hint" id="pdfHint">Reading 지문 <strong>1개 + 그 문제</strong>가 담긴 페이지를 고르세요. 정답 페이지까지 함께 선택하면 채점이 정확해집니다.</span>
+    <input type="file" id="pdfFile" accept=".pdf,.zip,application/pdf,application/zip,application/x-zip-compressed" hidden>
+    <button class="btn solid" id="pdfPick">PDF · ZIP 파일 선택</button>
+    <span class="pdf-hint" id="pdfHint">PDF는 지문 1개+문제 페이지를, ZIP은 케임브리지 책 압축본(예: Cambridge IELTS 20.zip)을 그대로 올리세요.</span>
   </div>
   <div class="tutor-state" id="pdfState"></div>
 
-  <div id="pdfPages" class="pdf-pages" hidden></div>
+  <!-- ZIP(책 전체) 워크스페이스 -->
+  <div id="bookWrap" hidden>
+    <div class="book-info" id="bookInfo"></div>
+    <div class="book-grid" id="bookGrid"></div>
+    <p class="book-note">칸을 누르면 그 Test·영역을 분석해 아래 학습 패널에 넣습니다. Listening/Reading은 CBT로, Writing은 라이팅 랩, Speaking은 스피킹 랩으로 들어갑니다.</p>
+  </div>
 
+  <!-- 단일 PDF 워크스페이스 -->
+  <div id="pdfPages" class="pdf-pages" hidden></div>
   <div class="pdf-actions" id="pdfActions" hidden>
     <span class="pdf-sel" id="pdfSel">선택된 페이지 0쪽</span>
     <button class="btn" id="pdfPreview">선택 페이지 원문 보기</button>
@@ -607,7 +640,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   <div class="test-badge" id="rTestBadge"></div>
 
   <div class="cbt-bar">
-    <span class="lb">남은 시간</span>
+    <span class="lb" id="rTimeLb">남은 시간</span>
     <span class="t mono" id="rTime">20:00</span>
     <span class="sp"></span>
     <button class="btn" id="rStart">시작</button>
@@ -1274,7 +1307,11 @@ var CLIENT_SYS = {
  writing:"너는 IELTS Writing 공식 Band Descriptors에 정통한 채점관이다. 응시자는 6.0~6.5이며 한 달 뒤 7.0이 목표다. Task Response, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy를 각각 0.5 단위로 채점하고 overall은 평균을 0.5 단위로 반올림한다. 망설여지면 낮은 쪽을 준다. 단어 수 미달(Task1 150 / Task2 250)이면 Task Response에서 감점하고 verdict에 명시한다. fixes는 3~5개, 사소한 오타보다 반복되는 구조적 문제를 우선한다. after는 응시자가 실제로 쓸 수 있는 수준으로 고친다. 암기 템플릿 표현은 반드시 지적한다.\n"+CLIENT_SHAPE,
  reading:"너는 IELTS Reading 함정 구조를 가르치는 튜터다. bands는 빈 배열, overall은 null로 둔다. verdict는 왜 오답인지 한 문장으로, 정답 근거가 지문 어디인지 짚는다. fixes의 before에는 응시자가 고른 답, after에는 정답과 근거를 넣는다. tips는 이 문제 유형에서 통하는 전략 1~2개. True/False/Not Given이면 False(지문이 반대로 말함)와 Not Given(언급 자체가 없음)의 차이를 이 문항에 빗대어 설명한다. 응시자가 지문 대신 상식으로 판단했으면 지적한다. 지문을 길게 옮겨 적지 않는다.\n"+CLIENT_SHAPE,
  speaking:"너는 IELTS Speaking 시험관이다. 스크립트에는 발음 정보가 없으므로 Pronunciation은 채점하지 않는다. bands는 Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy 3개만. overall은 그 평균이며 발음 미반영 추정치임을 verdict에 밝힌다. Part 2는 220단어 미만이면 2분에 미달함을 지적한다. 반복 표현, 지나치게 짧은 답변, 주제 이탈을 우선 지적한다. 문어체로 고쳐주지 않는다.\n"+CLIENT_SHAPE,
- "import":"너는 IELTS Academic Reading 시험지 텍스트를 CBT 데이터로 변환하는 파서다. 아래 JSON 하나만 출력하고 코드펜스·설명을 붙이지 않는다. 스키마: {\"title\":\"\",\"src\":\"\",\"paras\":[[\"A\",\"문단 원문\"]],\"headings\":[\"i. ...\"],\"groups\":[{\"g\":\"Questions 1-6\",\"gi\":\"지시문\",\"type\":\"heading|tfng|ynng|mcq|gap\",\"summary\":\"gap 요약문(선택)\",\"qs\":[{\"n\":1,\"q\":\"문항 원문\",\"opts\":[\"A. ..\",\"B. ..\"],\"a\":\"정답\",\"ev\":\"근거 문단 라벨\"}]}]}. 규칙: 새 문제를 창작하지 말고 원문에 있는 것만 옮긴다. 지문 문단 본문은 요약하지 말고 원문 그대로. type은 heading/tfng/ynng/mcq/gap 중 하나. tfng의 a는 TRUE/FALSE/NOT GIVEN, ynng는 YES/NO/NOT GIVEN, heading은 로마숫자, mcq는 opts 중 하나와 완전히 동일한 문자열. 정답 키가 텍스트에 있으면 그 정답을, 없으면 지문 근거로 직접 푼다. 허용 답이 여럿이면 a를 \"word1|word2\"로. Reading 형식이 아니면 {\"error\":\"이 텍스트에서 Reading 문제를 찾지 못했습니다.\"}만 출력한다. 영어 원문은 번역하지 않는다."
+ "import":"너는 IELTS Academic Reading 시험지 텍스트를 CBT 데이터로 변환하는 파서다. 아래 JSON 하나만 출력하고 코드펜스·설명을 붙이지 않는다. 스키마: {\"title\":\"\",\"src\":\"\",\"paras\":[[\"A\",\"문단 원문\"]],\"headings\":[\"i. ...\"],\"groups\":[{\"g\":\"Questions 1-6\",\"gi\":\"지시문\",\"type\":\"heading|tfng|ynng|mcq|gap\",\"summary\":\"gap 요약문(선택)\",\"qs\":[{\"n\":1,\"q\":\"문항 원문\",\"opts\":[\"A. ..\",\"B. ..\"],\"a\":\"정답\",\"ev\":\"근거 문단 라벨\"}]}]}. 규칙: 새 문제를 창작하지 말고 원문에 있는 것만 옮긴다. 지문 문단 본문은 요약하지 말고 원문 그대로. type은 heading/tfng/ynng/mcq/gap 중 하나. tfng의 a는 TRUE/FALSE/NOT GIVEN, ynng는 YES/NO/NOT GIVEN, heading은 로마숫자, mcq는 opts 중 하나와 완전히 동일한 문자열. 정답 키가 텍스트에 있으면 그 정답을, 없으면 지문 근거로 직접 푼다. 허용 답이 여럿이면 a를 \"word1|word2\"로. Reading 형식이 아니면 {\"error\":\"이 텍스트에서 Reading 문제를 찾지 못했습니다.\"}만 출력한다. 영어 원문은 번역하지 않는다.",
+ "book_index":"너는 IELTS 문제집 PDF의 페이지별 앞부분 요약을 받아 목차 색인을 만든다. 아래 JSON 하나만 출력한다: {\"tests\":[{\"n\":1,\"listening\":[[s,e]],\"reading\":[[s,e]],\"writing\":[[s,e]],\"speaking\":[[s,e]]}],\"answerKey\":[[s,e]],\"audioscript\":[[s,e]]}. 페이지 번호는 입력 P번호(1-기반), 범위는 [시작,끝] 포함. 없는 영역은 []. 정답/오디오 대본은 문서 전체 기준으로 answerKey/audioscript에. IELTS 구조가 아니면 {\"error\":\"...\"}.",
+ "listening_import":"너는 IELTS Listening 시험지 텍스트를 CBT 데이터로 변환한다. 아래 JSON 하나만: {\"title\":\"\",\"sections\":[{\"n\":1,\"gi\":\"\",\"groups\":[{\"g\":\"Questions 1-6\",\"gi\":\"지시문\",\"type\":\"gap|mcq|tfng|matching\",\"summary\":\"완성문(선택)\",\"qs\":[{\"n\":1,\"q\":\"\",\"opts\":[\"A. ..\"],\"a\":\"정답\",\"ev\":\"섹션번호\"}]}]}]}. 정답 키가 있으면 그 정답을, 없으면 대본 근거로. mcq/matching은 opts 중 하나와 동일한 a. 영어 원문 번역 금지. 문제 없으면 {\"error\":\"...\"}.",
+ "writing_import":"너는 IELTS Writing 시험지에서 과제만 추출한다. 아래 JSON 하나만: {\"task1\":{\"prompt\":\"\",\"chartNote\":\"\"},\"task2\":{\"prompt\":\"\"}}. 지시문 포함 원문 그대로, 번역 금지. Task1 그림 정보는 chartNote에. 없는 Task는 prompt 빈 문자열. 과제 없으면 {\"error\":\"...\"}.",
+ "speaking_import":"너는 IELTS Speaking 시험지에서 파트별 질문을 추출한다. 아래 JSON 하나만: {\"parts\":[{\"part\":\"1\",\"cue\":\"\"},{\"part\":\"2\",\"cue\":\"\"},{\"part\":\"3\",\"cue\":\"\"}]}. 원문 그대로, 번역 금지. 없는 파트는 제외. 자료 없으면 {\"error\":\"...\"}."
 };
 
 function wordCount(s){ return String(s||"").trim().split(/\s+/).filter(Boolean).length; }
@@ -1286,7 +1323,8 @@ function clientUserMsg(task,p){
   if(task==="reading") return "[문제 유형] "+p.qtype+"\n[문항] "+p.question+
     (p.choices?"\n[선택지] "+p.choices:"")+"\n[응시자 답] "+(p.userAnswer||"(무응답)")+
     "\n[정답] "+p.correctAnswer+"\n[지문 근거 부분]\n"+p.evidence;
-  if(task==="import") return "아래는 PDF 문제집에서 추출한 원문 텍스트다. 위 스키마대로 변환하라.\n\n[추출 텍스트]\n"+String(p.text||"").slice(0,45000);
+  if(task==="import"||task==="book_index"||task==="listening_import"||task==="writing_import"||task==="speaking_import")
+    return "아래 텍스트를 위 스키마대로 변환/분석하라.\n\n"+String(p.text||"").slice(0,45000);
   return "[Part "+p.part+"]\n[질문/큐카드]\n"+p.cue+"\n\n[응시자 스크립트]\n"+p.transcript;
 }
 
@@ -1319,7 +1357,7 @@ function askTutor(task,payload){
     return fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:task==="import"?8000:1000,
+        model:"claude-sonnet-4-6",max_tokens:(task==="import"||task==="book_index"||task==="listening_import"||task==="writing_import"||task==="speaking_import")?8000:1000,
         system:CLIENT_SYS[task],
         messages:[{role:"user",content:clientUserMsg(task,payload)}]
       })
@@ -1441,7 +1479,14 @@ function loadTest(t){
   document.getElementById("rState").innerHTML="";
   document.getElementById("rScore").textContent="— / "+FLAT.length;
   var b=document.getElementById("rBand"); b.textContent="—"; b.className="big mono";
-  document.getElementById("rMsg").textContent="시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
+  var listening = t.kind==="listening";
+  // 리스닝은 20분 카운트다운이 의미 없으므로 타이머 UI를 숨긴다(오디오가 시간을 정한다).
+  document.getElementById("rTimeLb").style.display = listening ? "none" : "";
+  document.getElementById("rTime").style.display   = listening ? "none" : "";
+  document.getElementById("rStart").style.display  = listening ? "none" : "";
+  document.getElementById("rMsg").textContent = listening
+    ? "오디오를 듣고 문제를 푼 뒤 ‘제출·채점’을 누르세요."
+    : "시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
   buildPassage(); buildQuestions(); rClock(); renderTestBadge();
 }
 
@@ -1453,7 +1498,7 @@ function renderTestBadge(){
     var note=el("span",null,"— 위 “내 문제집(PDF)”에서 본인 기출을 올려 풀 수도 있습니다");
     note.style.fontSize="11px"; el0.appendChild(note);
   } else {
-    el0.appendChild(el("span","tag mine","내 문제집"));
+    el0.appendChild(el("span","tag mine",CUR_TEST.kind==="listening"?"내 문제집 · 리스닝":"내 문제집"));
     el0.appendChild(el("span","nm",PASSAGE.title||"업로드한 지문"));
     el0.appendChild(el("span",null,FLAT.length+"문항"));
     var back=el("button","lnk","샘플 지문으로 되돌리기");
@@ -1469,8 +1514,27 @@ function paraText(letter){
 function buildPassage(){
   var p=document.getElementById("rPassage");
   p.innerHTML="";
-  p.appendChild(el("h3",null,PASSAGE.title));
-  p.appendChild(el("p","src",PASSAGE.src));
+  p.appendChild(el("h3",null,PASSAGE.title||""));
+  if(PASSAGE.src) p.appendChild(el("p","src",PASSAGE.src));
+
+  if(CUR_TEST.kind==="listening"){
+    var audios=CUR_TEST.audio||[];
+    if(!audios.length){
+      p.appendChild(el("p","empty","이 Test의 오디오를 찾지 못했습니다. ZIP 안에 T1S1.mp3 형식의 파일이 있는지 확인하세요. (문제만으로 풀거나 오디오 없이 채점할 수 있습니다.)"));
+    } else {
+      audios.forEach(function(a){
+        var wrap=el("div","aud");
+        wrap.appendChild(el("div","aud-lb","Section "+a.section));
+        var au=document.createElement("audio");
+        au.controls=true; au.preload="none"; au.src=a.url;
+        wrap.appendChild(au);
+        p.appendChild(wrap);
+      });
+      p.appendChild(el("p","src","실제 시험은 한 번만 들려줍니다. 처음엔 멈추지 말고 끝까지 들어보세요."));
+    }
+    return;
+  }
+
   PASSAGE.paras.forEach(function(x){
     var d=el("p","para");
     d.appendChild(el("span","pl",x[0]));
@@ -1502,15 +1566,16 @@ function buildQuestions(){
       qt.appendChild(el("span",null,q.q));
       it.appendChild(qt);
 
-      var isChoice = g.type==="heading"||g.type==="tfng"||g.type==="ynng"||g.type==="mcq";
+      var wide = g.type==="mcq"||g.type==="matching";
+      var isChoice = g.type==="heading"||g.type==="tfng"||g.type==="ynng"||wide;
       if(isChoice){
-        var opts=el("div","opts"+(g.type==="mcq"?" col":""));
+        var opts=el("div","opts"+(wide?" col":""));
         var choices = g.type==="tfng" ? ["TRUE","FALSE","NOT GIVEN"]
                     : g.type==="ynng" ? ["YES","NO","NOT GIVEN"]
-                    : g.type==="mcq"  ? (Array.isArray(q.opts)?q.opts:[])
+                    : wide            ? (Array.isArray(q.opts)?q.opts:[])
                     : ROMAN.slice(0, Math.max(HEADINGS.length,1));
         choices.forEach(function(c){
-          var b=el("button","opt"+(g.type==="mcq"?" wide":""),c);
+          var b=el("button","opt"+(wide?" wide":""),c);
           b.addEventListener("click",function(){
             if(R.graded) return;
             R.ans[q.n]=c; renderPicks(); renderNav();
@@ -1626,19 +1691,27 @@ function explainWrong(){
   function next(){
     if(i>=wrong.length){ busy(st,false); return; }
     var f=wrong[i];
+    var listening = CUR_TEST.kind==="listening";
     busy(st,true,"튜터가 "+f.q.n+"번을 분석 중입니다… ("+(i+1)+"/"+wrong.length+")");
-    var TLABEL={heading:"Matching Headings",tfng:"True/False/Not Given",ynng:"Yes/No/Not Given",mcq:"Multiple Choice",gap:"Summary/Sentence Completion"};
+    var TLABEL={heading:"Matching Headings",tfng:"True/False/Not Given",ynng:"Yes/No/Not Given",mcq:"Multiple Choice",matching:"Matching",gap:"Summary/Sentence Completion"};
     var tlabel=TLABEL[f.g.type]||f.g.type;
     var choices = f.g.type==="tfng" ? "TRUE / FALSE / NOT GIVEN"
                 : f.g.type==="ynng" ? "YES / NO / NOT GIVEN"
                 : f.g.type==="heading" ? HEADINGS.join(" | ")
-                : f.g.type==="mcq" ? (Array.isArray(f.q.opts)?f.q.opts.join(" | "):"") : "";
-    var evTxt=paraText(f.q.ev);
-    var evidence = evTxt ? ("Paragraph "+f.q.ev+": "+evTxt)
+                : (f.g.type==="mcq"||f.g.type==="matching") ? (Array.isArray(f.q.opts)?f.q.opts.join(" | "):"") : "";
+    var evidence;
+    if(listening){
+      evidence = CUR_TEST.script
+        ? ("[오디오 대본 발췌]\n"+String(CUR_TEST.script).slice(0,3000))
+        : "(오디오 대본이 제공되지 않았습니다. 정답 근거는 오디오를 다시 들으며 확인하세요.)";
+    } else {
+      var evTxt=paraText(f.q.ev);
+      evidence = evTxt ? ("Paragraph "+f.q.ev+": "+evTxt)
                  : PASSAGE.paras.map(function(p){return p[0]+": "+p[1];}).join("\n").slice(0,2600);
+    }
     askTutor("reading",{
-      qtype: tlabel,
-      question: f.q.q + (f.g.type==="gap" && f.g.summary ? "  ← 요약문: "+f.g.summary : ""),
+      qtype: (listening?"Listening · ":"")+tlabel,
+      question: f.q.q + (f.g.type==="gap" && f.g.summary ? "  ← 완성문: "+f.g.summary : ""),
       choices: choices,
       userAnswer: R.ans[f.q.n]||"",
       correctAnswer: ansText(f.q),
@@ -1648,7 +1721,7 @@ function explainWrong(){
       var h=el("div","fixh","문항 "+f.q.n+" — "+tlabel);
       h.style.marginTop=i===0?"6px":"26px";
       box.insertBefore(h,sub);
-      renderFeedback(sub,res,"Reading");
+      renderFeedback(sub,res,listening?"Listening":"Reading");
       i++; next();
     }).catch(function(e){
       errState(st,e.message);
@@ -1670,7 +1743,9 @@ document.getElementById("rReset").addEventListener("click",function(){
   document.getElementById("rState").innerHTML="";
   document.getElementById("rScore").textContent="— / "+FLAT.length;
   var b=document.getElementById("rBand"); b.textContent="—"; b.className="big mono";
-  document.getElementById("rMsg").textContent="시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
+  document.getElementById("rMsg").textContent = CUR_TEST.kind==="listening"
+    ? "오디오를 듣고 문제를 푼 뒤 ‘제출·채점’을 누르세요."
+    : "시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
   buildQuestions(); rClock();
 });
 
@@ -1707,11 +1782,10 @@ function pageText(tc){
   return out.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").replace(/[ \t]{2,}/g," ").trim();
 }
 
-function extractPdf(file){
+function extractPdfData(data){
   var pdfjs;
   return loadPdfjs()
-    .then(function(lib){ pdfjs=lib; return file.arrayBuffer(); })
-    .then(function(buf){ return pdfjs.getDocument({data:buf}).promise; })
+    .then(function(lib){ pdfjs=lib; return pdfjs.getDocument({data:data}).promise; })
     .then(function(doc){
       var pages=[], chain=Promise.resolve();
       for(var i=1;i<=doc.numPages;i++){ (function(n){
@@ -1724,6 +1798,9 @@ function extractPdf(file){
       })(i); }
       return chain.then(function(){ return pages; });
     });
+}
+function extractPdf(file){
+  return file.arrayBuffer().then(function(buf){ return extractPdfData(new Uint8Array(buf)); });
 }
 
 function renderPdfPages(){
@@ -1829,21 +1906,22 @@ function renderPdfSaved(){
   bar.appendChild(load); bar.appendChild(del);
 }
 
-document.getElementById("pdfPick").addEventListener("click",function(){
-  document.getElementById("pdfFile").click();
-});
-document.getElementById("pdfFile").addEventListener("change",function(){
-  var file=this.files&&this.files[0]; if(!file) return;
+function resetImportUI(){
   document.getElementById("pdfText").hidden=true;
   document.getElementById("pdfPages").hidden=true;
   document.getElementById("pdfActions").hidden=true;
+  document.getElementById("bookWrap").hidden=true;
+  document.getElementById("bookGrid").innerHTML="";
+  document.getElementById("bookInfo").textContent="";
+}
+
+function handlePdfSingle(file){
   PDFPAGES=[]; PDFSEL=new Set();
   pdfMsg("PDF를 여는 중입니다…");
   extractPdf(file).then(function(pages){
     PDFPAGES=pages;
     var withText=pages.filter(Boolean).length;
     if(!withText){ pdfMsg("이 PDF에서 텍스트를 찾지 못했습니다. 스캔본(이미지) PDF일 수 있습니다 — OCR로 텍스트가 들어간 파일을 사용하세요.",true); return; }
-    // 기본 선택: 페이지가 적으면 전체, 많으면 사용자가 직접 고르게
     if(pages.length<=8) pages.forEach(function(t,i){ if(t) PDFSEL.add(i); });
     renderPdfPages(); updatePdfSel();
     pdfDone(pages.length+"페이지에서 텍스트를 읽었습니다. 지문·문제(·정답) 페이지를 고른 뒤 변환하세요.");
@@ -1851,6 +1929,17 @@ document.getElementById("pdfFile").addEventListener("change",function(){
     var m=(e&&e.message)||String(e);
     pdfMsg("PDF를 읽지 못했습니다: "+m+" (오프라인이면 인터넷 연결 후 다시 시도하세요)",true);
   });
+}
+
+document.getElementById("pdfPick").addEventListener("click",function(){
+  document.getElementById("pdfFile").click();
+});
+document.getElementById("pdfFile").addEventListener("change",function(){
+  var file=this.files&&this.files[0]; if(!file){ return; }
+  resetImportUI();
+  var name=(file.name||"").toLowerCase();
+  if(name.endsWith(".zip")) handleZip(file);
+  else handlePdfSingle(file);
   this.value="";
 });
 document.getElementById("pdfPreview").addEventListener("click",function(){
@@ -1860,6 +1949,231 @@ document.getElementById("pdfPreview").addEventListener("click",function(){
   box.hidden=false; this.textContent="원문 숨기기";
 });
 document.getElementById("pdfConvert").addEventListener("click",convertSelected);
+
+/* ================= Cambridge 책(ZIP) ================= */
+var FFLATE_URL="https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js";
+var _fflate=null;
+var BOOK={pages:null,index:null,zipBytes:null,fflate:null,audioNames:[],lastUrls:[]};
+
+function loadFflate(){
+  if(_fflate) return Promise.resolve(_fflate);
+  return import(FFLATE_URL).then(function(m){ _fflate=m; return m; });
+}
+function baseName(nm){ return String(nm).replace(/^.*[\/\\]/,""); }
+function isAudioName(nm){ return /t0*\d+\s*[-_ ]?s0*\d+\.mp3$/i.test(baseName(nm)); }
+
+function handleZip(file){
+  pdfMsg("ZIP을 여는 중입니다…");
+  loadFflate().then(function(fflate){
+    BOOK.fflate=fflate;
+    return file.arrayBuffer();
+  }).then(function(buf){
+    BOOK.zipBytes=new Uint8Array(buf);
+    var names=[];
+    BOOK.fflate.unzipSync(BOOK.zipBytes,{filter:function(f){ names.push(f.name); return false; }});
+    BOOK.audioNames=names.filter(isAudioName);
+    var pdfName=names.filter(function(nm){ return /\.pdf$/i.test(nm); })
+                     .sort(function(a,b){ return b.length-a.length; })[0];
+    if(!pdfName) throw new Error("ZIP 안에서 PDF 파일을 찾지 못했습니다. 책 PDF가 포함됐는지 확인하세요.");
+    pdfMsg("PDF 텍스트를 읽는 중입니다… (책이 크면 시간이 걸립니다)");
+    var pdfBytes=BOOK.fflate.unzipSync(BOOK.zipBytes,{filter:function(f){ return f.name===pdfName; }})[pdfName];
+    return extractPdfData(pdfBytes);
+  }).then(function(pages){
+    BOOK.pages=pages;
+    if(!pages.filter(Boolean).length) throw new Error("PDF에서 텍스트를 찾지 못했습니다. 스캔본이면 OCR로 텍스트를 넣은 파일이 필요합니다.");
+    renderBookInfo();
+    return runBookIndex();
+  }).catch(function(e){
+    pdfMsg((e&&e.message)||"ZIP 처리에 실패했습니다.",true);
+  });
+}
+
+function renderBookInfo(){
+  document.getElementById("bookInfo").textContent =
+    "PDF "+(BOOK.pages?BOOK.pages.length:0)+"페이지 · 리스닝 오디오 "+BOOK.audioNames.length+"개 인식됨";
+  document.getElementById("bookWrap").hidden=false;
+}
+
+function runBookIndex(){
+  pdfMsg("AI가 책 구조(Test·영역)를 분석하는 중입니다… (20~40초)");
+  var snippets=BOOK.pages.map(function(t,i){
+    return "P"+(i+1)+": "+String(t||"").replace(/\s+/g," ").slice(0,180);
+  }).join("\n");
+  return askTutor("book_index",{text:snippets}).then(function(res){
+    if(!res || res.error) throw new Error(res&&res.error?res.error:"책 구조를 분석하지 못했습니다.");
+    BOOK.index=res;
+    renderBookGrid();
+    pdfDone("분석 완료 — 아래에서 Test와 영역을 골라 학습을 시작하세요.");
+  }).catch(function(e){
+    pdfMsg((e&&e.message)||"책 구조 분석에 실패했습니다.",true);
+  });
+}
+
+var SKILLS=[["listening","Listening"],["reading","Reading"],["writing","Writing"],["speaking","Speaking"]];
+function renderBookGrid(){
+  var g=document.getElementById("bookGrid"); g.innerHTML="";
+  var tests=(BOOK.index&&BOOK.index.tests)||[];
+  if(!tests.length){ g.appendChild(el("p","empty","Test 구조를 찾지 못했습니다.")); return; }
+  tests.forEach(function(t){
+    var row=el("div","book-row");
+    row.appendChild(el("div","book-tn","Test "+(t.n!=null?t.n:"?")));
+    SKILLS.forEach(function(sk){
+      var ranges=t[sk[0]]||[];
+      var has=Array.isArray(ranges)&&ranges.length;
+      var b=el("button","book-cell"+(has?"":" off"),sk[1]);
+      if(has){ b.addEventListener("click",function(){ startSkill(t.n,sk[0],ranges); }); }
+      else{ b.disabled=true; }
+      row.appendChild(b);
+    });
+    g.appendChild(row);
+  });
+  document.getElementById("bookWrap").hidden=false;
+}
+
+function pagesText(){
+  var idxs=[];
+  Array.prototype.slice.call(arguments).forEach(function(ranges){
+    (ranges||[]).forEach(function(r){
+      if(!Array.isArray(r)) return;
+      for(var i=r[0];i<=r[1];i++) idxs.push(i);
+    });
+  });
+  idxs=idxs.filter(function(v,i,a){ return v>=1 && a.indexOf(v)===i; }).sort(function(a,b){ return a-b; });
+  return idxs.map(function(i){ return (BOOK.pages&&BOOK.pages[i-1])||""; }).filter(Boolean).join("\n\n");
+}
+
+function scrollToPanel(re){
+  var h=Array.prototype.filter.call(document.querySelectorAll("section.panel h2"),function(x){ return re.test(x.textContent); })[0];
+  if(h) h.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function audioForTest(n){
+  var out=[];
+  (BOOK.audioNames||[]).forEach(function(nm){
+    var m=/t0*(\d+)\s*[-_ ]?s0*(\d+)\.mp3$/i.exec(baseName(nm));
+    if(m && +m[1]===Number(n)) out.push({section:+m[2],name:nm});
+  });
+  out.sort(function(a,b){ return a.section-b.section; });
+  return out;
+}
+function buildAudioUrls(n){
+  (BOOK.lastUrls||[]).forEach(function(u){ try{ URL.revokeObjectURL(u); }catch(e){} });
+  BOOK.lastUrls=[];
+  var out=[];
+  audioForTest(n).forEach(function(a){
+    try{
+      var bytes=BOOK.fflate.unzipSync(BOOK.zipBytes,{filter:function(f){ return f.name===a.name; }})[a.name];
+      var url=URL.createObjectURL(new Blob([bytes],{type:"audio/mpeg"}));
+      BOOK.lastUrls.push(url);
+      out.push({section:a.section,url:url});
+    }catch(e){}
+  });
+  return out;
+}
+
+function listeningToTest(res,testN,scriptRanges){
+  if(!res || res.error) throw new Error(res&&res.error?res.error:"변환 결과가 비어 있습니다.");
+  var TYPES=["gap","mcq","tfng","ynng","matching","heading"];
+  var groups=[];
+  (Array.isArray(res.sections)?res.sections:[]).forEach(function(sec){
+    (Array.isArray(sec.groups)?sec.groups:[]).forEach(function(g){
+      var type=TYPES.indexOf(g.type)>-1?g.type:"gap";
+      var qs=(Array.isArray(g.qs)?g.qs:[]).map(function(q){
+        var o={ n:q.n, q:String(q.q==null?("문항 "+q.n):q.q), a:String(q.a==null?"":q.a), ev:String(q.ev||sec.n||"") };
+        if(Array.isArray(q.opts)&&q.opts.length) o.opts=q.opts.map(String);
+        return o;
+      }).filter(function(q){ return q.n!=null && String(q.n)!==""; });
+      if(qs.length){
+        var out={ g:"Section "+(sec.n!=null?sec.n:"?")+" — "+String(g.g||""), gi:String(g.gi||sec.gi||""), type:type, qs:qs };
+        if(g.summary) out.summary=String(g.summary);
+        groups.push(out);
+      }
+    });
+  });
+  if(!groups.length) throw new Error("Listening 문제를 추출하지 못했습니다. 정답·대본 페이지가 색인에 포함됐는지 확인하세요.");
+  return {
+    kind:"listening",
+    passage:{ title:String(res.title||("Test "+testN+" Listening")), src:"사용자 제공 ZIP · Listening", paras:[] },
+    headings:[], questions:groups,
+    audio:buildAudioUrls(testN),
+    script:pagesText(scriptRanges),
+    sample:false, imported:true
+  };
+}
+
+function loadBookWriting(res,testN){
+  if(!res || res.error) throw new Error(res&&res.error?res.error:"Writing 과제를 추출하지 못했습니다.");
+  var t2=res.task2&&res.task2.prompt?String(res.task2.prompt).trim():"";
+  var t1=res.task1&&res.task1.prompt?String(res.task1.prompt).trim():"";
+  var note=res.task1&&res.task1.chartNote?String(res.task1.chartNote).trim():"";
+  if(!t1 && !t2) throw new Error("Writing 과제를 찾지 못했습니다.");
+  if(t1){
+    TASK1.unshift({ prompt:t1+(note?"\n\n[차트·그림 설명]\n"+note:"")+"\n\n※ 실제 그림·차트는 PDF 원문에서 직접 확인하세요.", chart:null });
+  }
+  if(t2){ TASK2.unshift(t2); }
+  W.kind = t2 ? "task2" : "task1";
+  document.getElementById("wKind").value=W.kind;
+  W.i=0; loadWriting();
+  pdfDone("Test "+testN+" Writing 과제를 ‘라이팅 랩’에 넣었습니다. 아래에서 작성 후 채점받으세요.");
+  scrollToPanel(/라이팅 랩/);
+}
+
+function loadBookSpeaking(res,testN){
+  if(!res || res.error) throw new Error(res&&res.error?res.error:"Speaking 자료를 추출하지 못했습니다.");
+  var parts=Array.isArray(res.parts)?res.parts:[];
+  var added=null;
+  parts.forEach(function(pt){
+    var k=String(pt.part||"").replace(/[^123]/g,"");
+    var cue=pt.cue?String(pt.cue).trim():"";
+    if(SPEAK[k] && cue){ SPEAK[k].unshift({cue:cue}); if(!added) added=k; }
+  });
+  if(!added) throw new Error("Speaking 파트를 찾지 못했습니다.");
+  SP.part = SPEAK["2"] && SPEAK["2"].length ? "2" : added;
+  document.getElementById("sPart").value=SP.part;
+  SP.i=0; loadSpeak();
+  pdfDone("Test "+testN+" Speaking 자료를 ‘스피킹 랩’에 넣었습니다. 파트를 골라 연습하세요.");
+  scrollToPanel(/스피킹 랩/);
+}
+
+function startSkill(testN,skill,ranges){
+  var ak=(BOOK.index&&BOOK.index.answerKey)||[];
+  var as=(BOOK.index&&BOOK.index.audioscript)||[];
+  if(skill==="reading"){
+    var rtext=pagesText(ranges,ak);
+    if(!rtext){ pdfMsg("Reading 페이지에서 텍스트를 찾지 못했습니다.",true); return; }
+    pdfMsg("Test "+testN+" Reading을 CBT로 변환하는 중입니다… (20~40초)");
+    askTutor("import",{text:rtext}).then(function(res){
+      var test; try{ test=importToTest(res); }catch(e){ pdfMsg(e.message,true); return; }
+      test.passage.title="Test "+testN+" — "+(test.passage.title||"Reading");
+      activateImported(test);
+    }).catch(function(e){ pdfMsg((e&&e.message)||"변환 실패",true); });
+  } else if(skill==="listening"){
+    var ltext=pagesText(ranges,ak,as);
+    if(!ltext){ pdfMsg("Listening 페이지에서 텍스트를 찾지 못했습니다.",true); return; }
+    pdfMsg("Test "+testN+" Listening을 CBT로 변환하는 중입니다… (20~40초)");
+    askTutor("listening_import",{text:ltext}).then(function(res){
+      var test; try{ test=listeningToTest(res,testN,as); }catch(e){ pdfMsg(e.message,true); return; }
+      loadTest(test);
+      var nq=test.questions.reduce(function(a,g){return a+g.qs.length;},0);
+      pdfDone("Test "+testN+" Listening 변환 완료 ("+nq+"문항). 오디오를 듣고 아래에서 푸세요."+(test.audio.length?"":" (오디오 파일은 찾지 못했습니다.)"));
+      scrollToPanel(/CBT 리딩/);
+    }).catch(function(e){ pdfMsg((e&&e.message)||"변환 실패",true); });
+  } else if(skill==="writing"){
+    var wtext=pagesText(ranges);
+    if(!wtext){ pdfMsg("Writing 페이지에서 텍스트를 찾지 못했습니다.",true); return; }
+    pdfMsg("Test "+testN+" Writing 과제를 추출하는 중입니다…");
+    askTutor("writing_import",{text:wtext}).then(function(res){
+      try{ loadBookWriting(res,testN); }catch(e){ pdfMsg(e.message,true); }
+    }).catch(function(e){ pdfMsg((e&&e.message)||"추출 실패",true); });
+  } else if(skill==="speaking"){
+    var stext=pagesText(ranges);
+    if(!stext){ pdfMsg("Speaking 페이지에서 텍스트를 찾지 못했습니다.",true); return; }
+    pdfMsg("Test "+testN+" Speaking 자료를 추출하는 중입니다…");
+    askTutor("speaking_import",{text:stext}).then(function(res){
+      try{ loadBookSpeaking(res,testN); }catch(e){ pdfMsg(e.message,true); }
+    }).catch(function(e){ pdfMsg((e&&e.message)||"추출 실패",true); });
+  }
+}
 
 /* ================= CHART RENDERER ================= */
 var PAL=["#16213A","#D6285A","#0F7A6B"];
