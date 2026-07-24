@@ -436,6 +436,73 @@ details .body strong{color:var(--ink)}
 }
 .aud audio{width:100%;height:34px}
 
+/* ---------- 학습 런처 ---------- */
+.mode-tabs{display:flex;gap:8px;margin-bottom:14px}
+.mode-tab{
+  flex:1 1 auto;padding:11px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--card);
+  font-size:14px;color:var(--ink-soft);cursor:pointer;transition:all .12s;
+}
+.mode-tab:hover{border-color:var(--ink-soft)}
+.mode-tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600}
+.mode-desc{font-size:13px;color:var(--ink-soft);margin:0 0 16px;line-height:1.55}
+.launch-row{display:flex;flex-wrap:wrap;gap:8px}
+.launch-btn{
+  flex:1 1 160px;display:flex;flex-direction:column;gap:3px;align-items:flex-start;
+  padding:13px 15px;border:1px solid var(--rule);border-left:3px solid var(--ink);border-radius:2px;
+  background:var(--card);cursor:pointer;text-align:left;transition:all .12s;
+}
+.launch-btn:hover{background:var(--paper);border-left-color:var(--mark)}
+.launch-btn .lt{font-size:14px;color:var(--ink);font-weight:600}
+.launch-btn .ls{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.launch-btn.skill-listening{border-left-color:#2563EB}
+.launch-btn.skill-reading{border-left-color:var(--pass)}
+.launch-btn.skill-writing{border-left-color:var(--mark)}
+.launch-btn.skill-speaking{border-left-color:#B45309}
+
+/* ---------- 단어장 ---------- */
+.voc-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.voc-filter{display:flex;gap:6px;flex-wrap:wrap}
+.voc-fbtn{
+  border:1px solid var(--rule);border-radius:2px;background:var(--card);padding:6px 12px;
+  font-size:12.5px;color:var(--ink-soft);cursor:pointer;
+}
+.voc-fbtn.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.voc-prog{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-soft)}
+.voc-card{
+  border:1px solid var(--rule);border-radius:3px;background:var(--card);
+  padding:26px 22px;min-height:180px;display:flex;flex-direction:column;
+}
+.voc-word{font-family:var(--f-display);font-size:30px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.voc-pos{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft);margin:4px 0 0}
+.voc-theme{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-top:10px}
+.voc-back{margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)}
+.voc-mean{font-size:16px;color:var(--ink);line-height:1.6}
+.voc-ex{font-size:14px;color:var(--ink-soft);line-height:1.7;margin-top:10px;font-style:italic}
+.voc-ex b{color:var(--ink);font-style:normal;font-weight:600}
+.voc-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:18px}
+.voc-actions .sp{flex:1}
+.voc-badge{font-family:var(--f-mono);font-size:11px;padding:2px 8px;border-radius:2px;border:1px solid var(--rule);color:var(--ink-soft)}
+.voc-badge.known{color:var(--pass);border-color:var(--pass)}
+.voc-badge.learning{color:var(--mark);border-color:var(--mark)}
+.voc-list-item{
+  display:flex;gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--rule);font-size:13.5px;
+}
+.voc-list-item .w{font-weight:600;color:var(--ink);flex:0 0 130px}
+.voc-list-item .m{color:var(--ink-soft);flex:1}
+.voc-th-head{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:20px 0 4px;border-bottom:1px solid var(--rule);padding-bottom:6px}
+
+/* ---------- 오답 편집 ---------- */
+.err .act{display:flex;gap:2px;flex:none}
+.err .edit{border:0;background:none;color:var(--ink-soft);font-size:13px;line-height:1;padding:0 3px;cursor:pointer}
+.err .edit:hover{color:var(--ink)}
+.err-edit{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.err-edit .row{display:flex;gap:8px;flex-wrap:wrap}
+.err-edit select,.err-edit textarea{
+  border:1px solid var(--rule);border-radius:2px;background:var(--card);padding:8px 10px;font-size:13px;color:var(--ink);
+}
+.err-edit textarea{width:100%;min-height:64px;resize:vertical;line-height:1.6;font-family:var(--f-body)}
+.err-edit .ebtns{display:flex;gap:8px}
+
 /* ---------- writing lab ---------- */
 .wl-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
 .prompt-box{
@@ -553,6 +620,18 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   <div id="taskList"></div>
 </section>
 
+<!-- ============ 학습 시작 (모드 선택) ============ -->
+<section class="panel" id="launchPanel">
+  <h2>학습 시작</h2>
+  <p class="sub">두 가지 방식 중 하나를 골라 학습하세요. 어느 쪽이든 <strong>고르면 곧바로 CBT 학습 화면으로 이동</strong>합니다.</p>
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab" data-mode="plan">📅 플랜 모드</button>
+    <button class="mode-tab" data-mode="free">🎯 자유 모드</button>
+  </div>
+  <p class="mode-desc" id="modeDesc"></p>
+  <div id="launchBody"></div>
+</section>
+
 <!-- ============ 28-DAY GRID ============ -->
 <section class="panel">
   <h2>28일 진행</h2>
@@ -593,13 +672,29 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
         <select id="eArea"><option>Listening</option><option>Reading</option><option>Writing</option><option>Speaking</option></select></div>
       <div><label class="fl" for="eCause">원인</label>
         <select id="eCause"><option>어휘 모름</option><option>패러프레이즈</option><option>시간 부족</option><option>함정</option><option>철자·형태</option></select></div>
-      <div class="full"><label class="fl" for="eNote">다음엔 어떻게 다르게 할 것인가 (한 문장)</label>
-        <input type="text" id="eNote" placeholder="예: NG는 지문에 언급 없을 때만 고른다" maxlength="90"></div>
+      <div class="full"><label class="fl" for="eNote">메모 — 다음엔 어떻게 다르게 할지, 규칙, 예문 등</label>
+        <input type="text" id="eNote" placeholder="예: NG는 지문에 언급 없을 때만 고른다" maxlength="300"></div>
       <div class="full"><button class="btn solid" id="addErr">오답 추가</button></div>
     </div>
     <div class="err-list" id="errList"></div>
   </section>
 </div>
+
+<!-- ============ 빈출 단어장 ============ -->
+<section class="panel" id="vocabPanel">
+  <h2>빈출 단어장</h2>
+  <p class="sub">IELTS 리딩·리스닝·라이팅에 자주 나오는 <strong>학술 어휘</strong>입니다. 카드를 넘기며 아는 단어와 복습할 단어를 나누세요. 진행 상황은 이 브라우저에 저장됩니다.</p>
+  <div class="voc-bar">
+    <div class="voc-filter" id="vocFilter">
+      <button class="voc-fbtn" data-f="all">전체</button>
+      <button class="voc-fbtn" data-f="learning">복습할 단어</button>
+      <button class="voc-fbtn" data-f="theme">주제별 보기</button>
+    </div>
+    <span class="voc-prog" id="vocProg"></span>
+  </div>
+  <div id="vocCardWrap"></div>
+  <div id="vocList" hidden></div>
+</section>
 
 <!-- ============ 내 문제집 (PDF · ZIP) ============ -->
 <section class="panel" id="pdfPanel">
@@ -833,12 +928,14 @@ var REF = [
 /* ---------------- state ---------------- */
 var S = store.get(KEY, null) || {
   exam:"", done:{}, mocks:[], errors:[],
-  band:{L:7.5,R:7.5,W:6.5,S:6.5}, sel:null
+  band:{L:7.5,R:7.5,W:6.5,S:6.5}, sel:null, mode:"plan", vocab:{}
 };
 if(!S.band) S.band = {L:7.5,R:7.5,W:6.5,S:6.5};
 if(!S.done) S.done = {};
 if(!S.mocks) S.mocks = [];
 if(!S.errors) S.errors = [];
+if(!S.mode) S.mode = "plan";
+if(!S.vocab) S.vocab = {};
 function save(){ store.set(KEY,S); }
 
 /* ---------------- date helpers ---------------- */
@@ -1041,7 +1138,7 @@ function renderGrid(){
     var t=document.createElement("span"); t.className="n"; t.textContent=i+1;
     c.appendChild(f); c.appendChild(t);
     c.title = S.exam ? ("Day "+(i+1)+" · "+dn+"/"+n+" 완료") : ("Day "+(i+1));
-    (function(idx){ c.addEventListener("click",function(){ S.sel=idx; save(); renderTasks(); renderGrid(); }); })(i);
+    (function(idx){ c.addEventListener("click",function(){ S.sel=idx; save(); renderTasks(); renderGrid(); renderLaunch(); }); })(i);
     grid.appendChild(c);
   }
   document.getElementById("progText").textContent = doneN+" / "+total+" 완료 ("+Math.round(total?doneN/total*100:0)+"%)";
@@ -1117,18 +1214,252 @@ function renderErrors(){
     return;
   }
   S.errors.slice().reverse().forEach(function(e){
+    if(editingErr===e){ list.appendChild(errEditForm(e)); return; }
     var row=document.createElement("div"); row.className="err";
-    var m=document.createElement("span"); m.className="meta"; m.innerHTML=e.d.slice(5)+"<br>"+e.area;
+    var m=document.createElement("span"); m.className="meta"; m.innerHTML=e.d.slice(5)+"<br>"+esc(e.area);
     var t=document.createElement("span"); t.className="tx";
     t.innerHTML="<strong>"+esc(e.cause)+"</strong>"+(e.note?" — "+esc(e.note):"");
+    var act=document.createElement("span"); act.className="act";
+    var edit=document.createElement("button"); edit.className="edit"; edit.textContent="✎"; edit.setAttribute("aria-label","오답 편집");
+    edit.addEventListener("click",function(){ editingErr=e; renderErrors(); });
     var del=document.createElement("button"); del.className="del"; del.textContent="×"; del.setAttribute("aria-label","오답 삭제");
     del.addEventListener("click",function(){
-      var i=S.errors.indexOf(e); if(i>-1) S.errors.splice(i,1); save(); renderErrors();
+      if(!window.confirm("이 오답노트를 삭제할까요?")) return;
+      var i=S.errors.indexOf(e); if(i>-1) S.errors.splice(i,1); editingErr=null; save(); renderErrors();
     });
-    row.appendChild(m); row.appendChild(t); row.appendChild(del);
+    act.appendChild(edit); act.appendChild(del);
+    row.appendChild(m); row.appendChild(t); row.appendChild(act);
     list.appendChild(row);
   });
 }
+
+var editingErr=null;
+var ERR_AREAS=["Listening","Reading","Writing","Speaking"];
+function errEditForm(e){
+  var box=document.createElement("div"); box.className="err-edit";
+  var r1=document.createElement("div"); r1.className="row";
+  var aSel=document.createElement("select");
+  ERR_AREAS.forEach(function(a){ var o=document.createElement("option"); o.textContent=a; if(a===e.area)o.selected=true; aSel.appendChild(o); });
+  var cSel=document.createElement("select");
+  CAUSES.forEach(function(c){ var o=document.createElement("option"); o.textContent=c; if(c===e.cause)o.selected=true; cSel.appendChild(o); });
+  r1.appendChild(aSel); r1.appendChild(cSel);
+  var ta=document.createElement("textarea"); ta.value=e.note||""; ta.placeholder="메모 — 다음엔 어떻게 다르게 할지, 규칙, 예문 등 자유롭게";
+  var btns=document.createElement("div"); btns.className="ebtns";
+  var save1=el("button","btn solid","저장");
+  save1.addEventListener("click",function(){
+    e.area=aSel.value; e.cause=cSel.value; e.note=ta.value.trim().slice(0,600);
+    editingErr=null; save(); renderErrors();
+  });
+  var cancel=el("button","btn","취소");
+  cancel.addEventListener("click",function(){ editingErr=null; renderErrors(); });
+  btns.appendChild(save1); btns.appendChild(cancel);
+  box.appendChild(r1); box.appendChild(ta); box.appendChild(btns);
+  return box;
+}
+
+/* ================= 빈출 단어장 ================= */
+var VOCAB=[
+ {w:"mitigate",p:"v.",k:"완화하다, 줄이다",e:"Planting trees can <b>mitigate</b> the effects of urban heat.",t:"환경"},
+ {w:"deplete",p:"v.",k:"고갈시키다",e:"Overfishing has <b>depleted</b> fish stocks in many seas.",t:"환경"},
+ {w:"emission",p:"n.",k:"배출(물)",e:"The city aims to cut carbon <b>emissions</b> by half.",t:"환경"},
+ {w:"sustainable",p:"adj.",k:"지속 가능한",e:"Solar power is a more <b>sustainable</b> energy source.",t:"환경"},
+ {w:"habitat",p:"n.",k:"서식지",e:"Draining the wetland destroyed the birds' <b>habitat</b>.",t:"환경"},
+ {w:"conservation",p:"n.",k:"보존, 보호",e:"Wildlife <b>conservation</b> depends on protecting habitats.",t:"환경"},
+ {w:"curriculum",p:"n.",k:"교육 과정",e:"Coding has been added to the school <b>curriculum</b>.",t:"교육"},
+ {w:"literacy",p:"n.",k:"읽고 쓰는 능력",e:"Adult <b>literacy</b> programmes reduced illiteracy sharply.",t:"교육"},
+ {w:"tuition",p:"n.",k:"수업, 등록금",e:"University <b>tuition</b> fees have risen steadily.",t:"교육"},
+ {w:"cognitive",p:"adj.",k:"인지의",e:"Reading builds children's <b>cognitive</b> skills.",t:"교육"},
+ {w:"vocational",p:"adj.",k:"직업의, 실무의",e:"<b>Vocational</b> training prepares students for specific jobs.",t:"교육"},
+ {w:"automation",p:"n.",k:"자동화",e:"<b>Automation</b> has replaced many factory jobs.",t:"기술"},
+ {w:"innovation",p:"n.",k:"혁신",e:"Constant <b>innovation</b> keeps the company competitive.",t:"기술"},
+ {w:"surveillance",p:"n.",k:"감시",e:"Critics worry about state <b>surveillance</b> of citizens.",t:"기술"},
+ {w:"accessible",p:"adj.",k:"접근 가능한, 이용하기 쉬운",e:"The internet makes information widely <b>accessible</b>.",t:"기술"},
+ {w:"obsolete",p:"adj.",k:"한물간, 쓸모없어진",e:"Smartphones made many gadgets <b>obsolete</b>.",t:"기술"},
+ {w:"sedentary",p:"adj.",k:"앉아서 하는, 활동이 적은",e:"A <b>sedentary</b> lifestyle raises the risk of disease.",t:"건강"},
+ {w:"outbreak",p:"n.",k:"(질병 등의) 발생, 창궐",e:"The <b>outbreak</b> spread quickly through the city.",t:"건강"},
+ {w:"chronic",p:"adj.",k:"만성의",e:"A poor diet contributes to <b>chronic</b> illness.",t:"건강"},
+ {w:"immunity",p:"n.",k:"면역(력)",e:"Vaccines build <b>immunity</b> against infection.",t:"건강"},
+ {w:"nutrition",p:"n.",k:"영양(섭취)",e:"Good <b>nutrition</b> is essential for children's growth.",t:"건강"},
+ {w:"inequality",p:"n.",k:"불평등",e:"Income <b>inequality</b> has widened in recent decades.",t:"사회"},
+ {w:"demographic",p:"adj./n.",k:"인구 통계의; 인구 집단",e:"An ageing <b>demographic</b> strains pension systems.",t:"사회"},
+ {w:"integration",p:"n.",k:"통합",e:"Language classes aid the <b>integration</b> of migrants.",t:"사회"},
+ {w:"discrimination",p:"n.",k:"차별",e:"The law bans <b>discrimination</b> based on gender.",t:"사회"},
+ {w:"welfare",p:"n.",k:"복지",e:"The state provides <b>welfare</b> for the unemployed.",t:"사회"},
+ {w:"norm",p:"n.",k:"규범, 표준",e:"Social <b>norms</b> vary widely between cultures.",t:"사회"},
+ {w:"recession",p:"n.",k:"경기 침체",e:"Unemployment rises during a <b>recession</b>.",t:"경제"},
+ {w:"subsidy",p:"n.",k:"보조금",e:"Farmers rely on government <b>subsidies</b>.",t:"경제"},
+ {w:"incentive",p:"n.",k:"유인, 동기",e:"Tax breaks are an <b>incentive</b> to invest.",t:"경제"},
+ {w:"revenue",p:"n.",k:"수익, 세입",e:"Tourism is a major source of <b>revenue</b>.",t:"경제"},
+ {w:"productivity",p:"n.",k:"생산성",e:"New tools boosted worker <b>productivity</b>.",t:"경제"},
+ {w:"fluctuate",p:"v.",k:"변동하다",e:"Oil prices <b>fluctuate</b> with global demand.",t:"경제"},
+ {w:"congestion",p:"n.",k:"혼잡, 정체",e:"Traffic <b>congestion</b> worsens during rush hour.",t:"도시"},
+ {w:"infrastructure",p:"n.",k:"기반 시설",e:"The region lacks basic <b>infrastructure</b> like roads.",t:"도시"},
+ {w:"densely",p:"adv.",k:"밀집하여",e:"The city centre is <b>densely</b> populated.",t:"도시"},
+ {w:"commute",p:"v./n.",k:"통근(하다)",e:"Many workers <b>commute</b> long distances every day.",t:"도시"},
+ {w:"amenity",p:"n.",k:"편의 시설",e:"The new suburb offers few <b>amenities</b> for residents.",t:"도시"},
+ {w:"constitute",p:"v.",k:"구성하다, ~에 해당하다",e:"Women <b>constitute</b> half of the workforce.",t:"학술"},
+ {w:"undermine",p:"v.",k:"약화시키다",e:"Corruption <b>undermines</b> public trust in government.",t:"학술"},
+ {w:"advocate",p:"v.",k:"옹호하다, 주장하다",e:"Many experts <b>advocate</b> earlier intervention.",t:"학술"},
+ {w:"attribute",p:"v.",k:"~의 탓·덕으로 돌리다",e:"She <b>attributes</b> her success to hard work.",t:"학술"},
+ {w:"comprise",p:"v.",k:"구성되다, 포함하다",e:"The survey <b>comprises</b> ten questions.",t:"학술"},
+ {w:"prevalent",p:"adj.",k:"널리 퍼진, 만연한",e:"Smartphones are <b>prevalent</b> among teenagers.",t:"학술"},
+ {w:"substantial",p:"adj.",k:"상당한",e:"There has been a <b>substantial</b> rise in prices.",t:"학술"},
+ {w:"diminish",p:"v.",k:"줄어들다, 약해지다",e:"Public interest in the sport has <b>diminished</b>.",t:"학술"},
+ {w:"notable",p:"adj.",k:"주목할 만한",e:"There was a <b>notable</b> improvement in the scores.",t:"학술"}
+];
+
+var VC={i:0,filter:"all",shown:false};
+function vocDeck(){
+  if(VC.filter==="learning") return VOCAB.filter(function(v){ return S.vocab[v.w]==="learning"; });
+  return VOCAB;
+}
+function vocStat(w){ return S.vocab[w]||""; }
+function renderVocab(){
+  var known=VOCAB.filter(function(v){ return S.vocab[v.w]==="known"; }).length;
+  var learn=VOCAB.filter(function(v){ return S.vocab[v.w]==="learning"; }).length;
+  document.getElementById("vocProg").textContent="아는 단어 "+known+" · 복습 "+learn+" / 총 "+VOCAB.length;
+  Array.prototype.forEach.call(document.querySelectorAll("#vocFilter .voc-fbtn"),function(b){
+    b.classList.toggle("on", b.dataset.f===VC.filter);
+  });
+  var cardWrap=document.getElementById("vocCardWrap"), listBox=document.getElementById("vocList");
+
+  if(VC.filter==="theme"){
+    cardWrap.hidden=true; listBox.hidden=false; listBox.innerHTML="";
+    var themes=[]; VOCAB.forEach(function(v){ if(themes.indexOf(v.t)<0) themes.push(v.t); });
+    themes.forEach(function(th){
+      listBox.appendChild(el("div","voc-th-head",th));
+      VOCAB.filter(function(v){return v.t===th;}).forEach(function(v){
+        var it=el("div","voc-list-item");
+        it.appendChild(el("span","w",v.w+" "+v.p));
+        it.appendChild(el("span","m",v.k));
+        listBox.appendChild(it);
+      });
+    });
+    return;
+  }
+
+  cardWrap.hidden=false; listBox.hidden=true;
+  var deck=vocDeck();
+  cardWrap.innerHTML="";
+  if(!deck.length){
+    cardWrap.appendChild(el("p","empty","복습할 단어가 없습니다. 카드에서 ‘복습’으로 표시한 단어가 여기 모입니다."));
+    return;
+  }
+  if(VC.i>=deck.length) VC.i=0;
+  var v=deck[VC.i];
+  var card=el("div","voc-card");
+  var head=el("div");
+  head.appendChild(el("div","voc-word",v.w));
+  head.appendChild(el("div","voc-pos",v.p+"  ·  "+(VC.i+1)+" / "+deck.length));
+  var st=vocStat(v.w);
+  if(st) head.appendChild(el("span","voc-badge "+st, st==="known"?"아는 단어":"복습 표시됨"));
+  head.appendChild(el("div","voc-theme",v.t));
+  card.appendChild(head);
+
+  if(VC.shown){
+    var back=el("div","voc-back");
+    back.appendChild(el("div","voc-mean",v.k));
+    var ex=el("div","voc-ex"); ex.innerHTML=v.e;
+    back.appendChild(ex);
+    card.appendChild(back);
+  }
+
+  var act=el("div","voc-actions");
+  if(!VC.shown){
+    var showB=el("button","btn solid","뜻 보기");
+    showB.addEventListener("click",function(){ VC.shown=true; renderVocab(); });
+    act.appendChild(showB);
+  } else {
+    var knowB=el("button","btn","알아요");
+    knowB.addEventListener("click",function(){ S.vocab[v.w]="known"; save(); vocNext(deck.length); });
+    var revB=el("button","btn solid","복습");
+    revB.addEventListener("click",function(){ S.vocab[v.w]="learning"; save(); vocNext(deck.length); });
+    act.appendChild(knowB); act.appendChild(revB);
+  }
+  act.appendChild(el("span","sp"));
+  var prev=el("button","btn","← 이전");
+  prev.addEventListener("click",function(){ VC.i=(VC.i-1+deck.length)%deck.length; VC.shown=false; renderVocab(); });
+  var next=el("button","btn","다음 →");
+  next.addEventListener("click",function(){ vocNext(deck.length); });
+  act.appendChild(prev); act.appendChild(next);
+  card.appendChild(act);
+  cardWrap.appendChild(card);
+}
+function vocNext(len){ VC.i=(VC.i+1)%len; VC.shown=false; renderVocab(); }
+
+Array.prototype.forEach.call(document.querySelectorAll("#vocFilter .voc-fbtn"),function(b){
+  b.addEventListener("click",function(){ VC.filter=b.dataset.f; VC.i=0; VC.shown=false; renderVocab(); });
+});
+
+/* ================= 학습 런처 (모드 선택) ================= */
+var LAST_LISTENING=null;
+function labelToSkill(label){
+  var s=String(label);
+  if(/listen|리스닝/i.test(s)) return "listening";
+  if(/read|리딩|지문/i.test(s)) return "reading";
+  if(/writ|라이팅|task\s*[12]/i.test(s)) return "writing";
+  if(/speak|스피킹/i.test(s)) return "speaking";
+  if(/어휘|단어|voca/i.test(s)) return "vocab";
+  if(/오답/i.test(s)) return "errors";
+  if(/모의/i.test(s)) return "mock";
+  return null;
+}
+function launchSkill(skill){
+  if(skill==="reading"){
+    if(!CUR_TEST || CUR_TEST.kind==="listening"){
+      var saved=store.get(IMPORT_KEY,null);
+      loadTest(saved && saved.passage && saved.kind!=="listening" ? saved : SAMPLE_TEST);
+    }
+    scrollToPanel(/CBT 리딩/);
+  } else if(skill==="listening"){
+    if(LAST_LISTENING){ loadTest(LAST_LISTENING); scrollToPanel(/CBT 리딩/); }
+    else { pdfMsg("리스닝은 오디오가 필요합니다. 아래에서 케임브리지 ZIP(책 PDF + 오디오)을 올린 뒤 Listening을 선택하세요.",false); scrollToPanel(/내 문제집/); }
+  } else if(skill==="writing"){ scrollToPanel(/라이팅 랩/); }
+  else if(skill==="speaking"){ scrollToPanel(/스피킹 랩/); }
+  else if(skill==="vocab"){ scrollToPanel(/빈출 단어장/); }
+  else if(skill==="errors"){ scrollToPanel(/오답 원인/); }
+  else if(skill==="mock"){ scrollToPanel(/모의고사 기록/); }
+  else { scrollToPanel(/CBT 리딩/); }
+}
+function launchButton(skill,title,sub){
+  var b=el("button","launch-btn"+(skill?" skill-"+skill:""));
+  b.appendChild(el("span","lt",title));
+  if(sub) b.appendChild(el("span","ls",sub));
+  b.addEventListener("click",function(){ launchSkill(skill); });
+  return b;
+}
+function renderLaunch(){
+  Array.prototype.forEach.call(document.querySelectorAll("#modeTabs .mode-tab"),function(b){
+    b.classList.toggle("on", b.dataset.mode===S.mode);
+  });
+  var desc=document.getElementById("modeDesc"), body=document.getElementById("launchBody");
+  body.innerHTML="";
+  if(S.mode==="free"){
+    desc.textContent="학습 플랜과 관계없이 4개 파트를 언제든 골라 학습합니다.";
+    var row=el("div","launch-row");
+    [["listening","Listening","듣기 · 오디오(ZIP) 필요"],
+     ["reading","Reading","읽기 · CBT"],
+     ["writing","Writing","쓰기 · AI 첨삭"],
+     ["speaking","Speaking","말하기 · AI 피드백"]].forEach(function(s){ row.appendChild(launchButton(s[0],s[1],s[2])); });
+    body.appendChild(row);
+    return;
+  }
+  desc.textContent="위 ‘28일 진행’ 캘린더에서 날짜를 누르면 그날 플랜이 여기에 반영됩니다. 항목을 누르면 해당 학습으로 바로 이동합니다.";
+  if(!S.exam){ body.innerHTML="<p class='empty'>먼저 시험 날짜를 설정하면 날짜별 학습 플랜이 나타납니다.</p>"; return; }
+  var i=(S.sel==null)?todayIndex():S.sel;
+  if(i==null) i=(today()<startDate())?0:27;
+  var rot=tasksFor(i), d=dateOf(i);
+  body.appendChild(el("div","mode-desc","Day "+(i+1)+" · "+(d.getMonth()+1)+"/"+d.getDate()+" ("+rot.d+") 플랜 — "+(todayIndex()===i?"오늘":"선택한 날")));
+  var row2=el("div","launch-row");
+  rot.t.forEach(function(t){
+    var sk=labelToSkill(t[0]);
+    row2.appendChild(launchButton(sk||"reading", t[0], t[1]+"분"));
+  });
+  body.appendChild(row2);
+}
+Array.prototype.forEach.call(document.querySelectorAll("#modeTabs .mode-tab"),function(b){
+  b.addEventListener("click",function(){ S.mode=b.dataset.mode; save(); renderLaunch(); });
+});
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
 /* ================= TIMER ================= */
@@ -2153,6 +2484,7 @@ function startSkill(testN,skill,ranges){
     pdfMsg("Test "+testN+" Listening을 CBT로 변환하는 중입니다… (20~40초)");
     askTutor("listening_import",{text:ltext}).then(function(res){
       var test; try{ test=listeningToTest(res,testN,as); }catch(e){ pdfMsg(e.message,true); return; }
+      LAST_LISTENING=test;
       loadTest(test);
       var nq=test.questions.reduce(function(a,g){return a+g.qs.length;},0);
       pdfDone("Test "+testN+" Listening 변환 완료 ("+nq+"문항). 오디오를 듣고 아래에서 푸세요."+(test.audio.length?"":" (오디오 파일은 찾지 못했습니다.)"));
@@ -2349,7 +2681,7 @@ var examEl=document.getElementById("examDate");
 examEl.value=S.exam||"";
 examEl.addEventListener("change",function(){
   S.exam=examEl.value; S.sel=null; save();
-  renderDday(); renderTasks(); renderGrid();
+  renderDday(); renderTasks(); renderGrid(); renderLaunch();
 });
 
 document.getElementById("addMock").addEventListener("click",function(){
@@ -2399,6 +2731,7 @@ document.getElementById("mDate").value=fmtISO(today());
 buildRuler(); buildPresets(); buildRef();
 buildPassage(); buildQuestions(); rClock(); renderTestBadge(); renderPdfSaved(); loadWriting(); loadSpeak();
 renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors(); renderClock();
+renderLaunch(); renderVocab();
 window.addEventListener("resize",renderRuler);
 })();
 </script>
