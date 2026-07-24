@@ -184,6 +184,39 @@ const SPEAKING_IMPORT_SYS = `
 - Speaking 자료를 찾지 못하면 {"error":"이 텍스트에서 Speaking 자료를 찾지 못했습니다."}만 출력.
 `.trim();
 
+/* ---------- AI 문제 생성(취약 유형 드릴) 프롬프트 ---------- */
+const GENERATE_SYS = `
+너는 IELTS Academic Reading 연습 문제를 새로 만드는 출제자다.
+학습자가 자주 틀리는 영역·원인과 실제 실수 메모를 받아, 그 약점을 집중적으로 훈련시키는
+**완전히 창작한(원본)** 지문 1개와 그에 딸린 문제·정답을 만든다. 기존 저작물을 베끼지 않는다.
+
+반드시 아래 JSON 객체 **하나만** 출력한다. 마크다운 코드펜스·설명·인사말 금지.
+
+{
+  "title": "지문 제목",
+  "src": "AI 생성 연습 지문",
+  "paras": [["A","문단 원문"],["B","문단 원문"], "... 5~6개 문단, 각 90~130단어, 학술적 설명문"],
+  "headings": ["i. 보기","ii. 보기", "... heading 문제가 있을 때만, 문단 수보다 3개 많게"],
+  "groups": [
+    {"g":"Questions 1-6","gi":"지시문","type":"heading","qs":[{"n":1,"q":"Paragraph A","a":"iv","ev":"A"}]},
+    {"g":"Questions 7-10","gi":"지시문","type":"tfng","qs":[{"n":7,"q":"진술문","a":"FALSE","ev":"C"}]},
+    {"g":"Questions 11-13","gi":"지시문","type":"gap","summary":"__11__ 포함 요약문","qs":[{"n":11,"q":"Gap 11","a":"단어","ev":"E"}]}
+  ]
+}
+
+규칙:
+- 주제 힌트가 주어지면 그 주제로, 없으면 학술적인 아무 주제로 쓴다. 매번 새롭고 다른 지문을 만든다.
+- 학습자의 약점(원인)을 문제에 반영한다:
+    · "함정" 또는 True/False/Not Given 약점 → NOT GIVEN과 FALSE를 헷갈리게 설계하고 tfng 문항 비중을 높인다.
+    · "패러프레이즈" → 지문과 문제의 표현을 서로 다른 말로 바꿔(동의어·구문 변형) 낸다.
+    · "어휘" → 문맥으로 뜻을 추론해야 하는 학술 어휘를 포함한다.
+- type은 heading / tfng / ynng / mcq / gap 중에서 고른다. 최소 두 가지 유형을 섞되 약점 유형을 가장 많이 낸다.
+- 정답 "a"는 반드시 지문 내용과 논리적으로 일치해야 한다. tfng의 a는 TRUE/FALSE/NOT GIVEN, heading은 로마숫자, mcq는 opts 중 하나와 동일, gap은 지문에 나온 단어.
+- "ev"는 정답 근거 문단 라벨. 문항 번호 n은 1부터 유일하게.
+- 지문·문제·보기는 자연스러운 학술 영어로 쓴다(한국어로 번역하지 않는다).
+- 총 문항은 12~14개.
+`.trim();
+
 /* ---------- 태스크별 시스템 프롬프트 ---------- */
 const SYSTEMS = {
   writing: `
@@ -236,7 +269,8 @@ ${SHAPE}`,
   book_index: BOOK_INDEX_SYS,
   listening_import: LISTENING_IMPORT_SYS,
   writing_import: WRITING_IMPORT_SYS,
-  speaking_import: SPEAKING_IMPORT_SYS
+  speaking_import: SPEAKING_IMPORT_SYS,
+  generate: GENERATE_SYS
 };
 
 /* ---------- 사용자 메시지 조립 ---------- */
@@ -278,13 +312,23 @@ function buildUserMessage(task, p) {
   if (task === "book_index") {
     return `아래는 책 각 페이지의 앞부분 요약이다. 위 스키마대로 목차 색인을 만들라.\n\n${clip(p.text, 45000)}`;
   }
+
+  if (task === "generate") {
+    return [
+      `[취약 영역] ${clip(p.area, 40) || "Reading"}`,
+      `[취약 원인] ${clip(p.cause, 60) || "(특정되지 않음)"}`,
+      p.topic ? `[주제 힌트] ${clip(p.topic, 80)}` : "",
+      p.notes ? `[학습자가 반복하는 실수 메모]\n${clip(p.notes, 1500)}` : "",
+      `위 약점을 집중 훈련시키는 원본 Reading 지문과 문제를 스키마대로 생성하라.`
+    ].filter(Boolean).join("\n");
+  }
   return null;
 }
 
 const EXTRACT_TASKS = new Set(["import", "book_index", "listening_import", "writing_import", "speaking_import"]);
 
 function maxTokensFor(task) {
-  if (task === "import" || task === "listening_import") return 8000;
+  if (task === "import" || task === "listening_import" || task === "generate") return 8000;
   if (task === "book_index") return 4000;
   if (task === "writing_import") return 6000;
   if (task === "speaking_import") return 3000;
@@ -309,7 +353,7 @@ async function callAnthropic({ system, userMsg, task }) {
       body: JSON.stringify({
         model: process.env.TUTOR_MODEL || "claude-sonnet-5",
         max_tokens: maxTokensFor(task),
-        temperature: EXTRACT_TASKS.has(task) ? 0 : 0.2,
+        temperature: EXTRACT_TASKS.has(task) ? 0 : (task === "generate" ? 0.8 : 0.2),
         system,
         messages: [{ role: "user", content: userMsg }]
       })
@@ -340,7 +384,7 @@ async function callGemini({ system, userMsg, task }) {
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
   const generationConfig = {
-    temperature: EXTRACT_TASKS.has(task) ? 0 : 0.2,
+    temperature: EXTRACT_TASKS.has(task) ? 0 : (task === "generate" ? 0.8 : 0.2),
     maxOutputTokens: maxTokensFor(task),
     responseMimeType: "application/json"
   };
