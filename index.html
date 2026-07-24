@@ -2940,9 +2940,12 @@ function fmtSection(raw){
   var lines=String(raw||"").replace(/\r/g,"").split(/\n/).map(function(s){ return s.replace(/\s+/g," ").trim(); })
     .filter(function(s){ return s && !FMT_NOISE.test(s); });
   var paras=[], buf="";
-  function flush(){ if(buf.trim()) paras.push(buf.trim()); buf=""; }
+  // 이 책의 텍스트 레이어는 양쪽 정렬 때문에 합성어를 "forest - dwelling"처럼
+  // 띄운다. 소문자-하이픈-소문자만 안전하게 붙인다(문장 대시는 건드리지 않음).
+  function tidy(s){ return s.replace(/([a-z]) - ([a-z])/g,"$1-$2").replace(/\s+([,.;:!?])/g,"$1"); }
+  function flush(){ if(buf.trim()) paras.push(tidy(buf.trim())); buf=""; }
   lines.forEach(function(ln){
-    if(FMT_ANCHOR.test(ln)){ flush(); paras.push(ln); return; }
+    if(FMT_ANCHOR.test(ln)){ flush(); paras.push(tidy(ln)); return; }
     buf = buf ? buf+" "+ln : ln;
     if(/[.!?:]$/.test(ln) && buf.length>40) flush();
   });
