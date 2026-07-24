@@ -2,6 +2,16 @@
   publish = "."
   functions = "netlify/functions"
 
+[build.environment]
+  # 시크릿 스캔 오탐 방지.
+  # 아래는 비밀이 아니라 공개 설정값(프로바이더/모델 이름)이며, 소스와 README에
+  # 그대로 등장한다: AI_PROVIDER=anthropic|gemini, TUTOR_MODEL=claude-...,
+  # GEMINI_MODEL=gemini-.... Netlify가 이 값들을 파일에서 발견하고 유출로 오탐해
+  # 빌드를 실패시키므로 스캔 대상에서 제외한다.
+  # 실제 비밀(ANTHROPIC_API_KEY, GEMINI_API_KEY, TUTOR_PASSCODE)은 제외하지 않아
+  # 계속 스캔·보호된다.
+  SECRETS_SCAN_OMIT_KEYS = "AI_PROVIDER,TUTOR_MODEL,GEMINI_MODEL"
+
 [[headers]]
   for = "/*"
   [headers.values]
