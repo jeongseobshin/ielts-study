@@ -583,6 +583,19 @@ details .body strong{color:var(--ink)}
 .voc-list-item .w{font-weight:600;color:var(--ink);flex:0 0 130px}
 .voc-list-item .m{color:var(--ink-soft);flex:1}
 .voc-th-head{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:20px 0 4px;border-bottom:1px solid var(--rule);padding-bottom:6px}
+/* SRS 퀴즈 */
+.voc-quiz-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.voc-input{flex:1 1 200px;min-height:42px;font-size:16px;padding:9px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--card);color:var(--ink)}
+.voc-quiz-sub{display:flex;gap:14px;margin-top:12px}
+.voc-mini{border:0;background:none;color:var(--ink-soft);font-size:12.5px;cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:2px}
+.voc-mini:hover{color:var(--ink)}
+.voc-result{font-size:14px;font-weight:600;margin-top:16px;padding:10px 12px;border-radius:2px}
+.voc-result.ok{color:var(--pass);background:rgba(15,122,107,.08);border:1px solid var(--pass)}
+.voc-result.no{color:var(--mark);background:rgba(214,40,90,.07);border:1px solid var(--mark)}
+.voc-word2{font-family:var(--f-display);font-size:26px;font-weight:600;color:var(--ink);margin-top:12px}
+.voc-tag{flex:none;font-family:var(--f-mono);font-size:10.5px;padding:2px 7px;border-radius:2px;border:1px solid var(--rule);color:var(--ink-soft)}
+.voc-tag.m{color:var(--pass);border-color:var(--pass)}
+.voc-tag.l{color:var(--mark);border-color:var(--mark)}
 
 /* ---------- 오답 편집 ---------- */
 .err .act{display:flex;gap:2px;flex:none}
@@ -797,12 +810,12 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 <!-- ============ 빈출 단어장 ============ -->
 <section class="panel" data-view="vocab" id="vocabPanel">
   <h2>빈출 단어장</h2>
-  <p class="sub">IELTS 리딩·리스닝·라이팅에 자주 나오는 <strong>학술 어휘</strong>입니다. 카드를 넘기며 아는 단어와 복습할 단어를 나누세요. 진행 상황은 이 브라우저에 저장됩니다.</p>
+  <p class="sub">IELTS 학술 어휘를 <strong>간격 반복(SRS) + 인출 퀴즈</strong>로 외웁니다. <strong>오늘 복습</strong>에서 뜻만 보고 단어를 직접 떠올려 입력하세요 — 맞히면 복습 간격이 늘고, 틀리면 다시 나옵니다. 진행은 이 브라우저에 저장됩니다.</p>
   <div class="voc-bar">
     <div class="voc-filter" id="vocFilter">
+      <button class="voc-fbtn" data-f="review">오늘 복습</button>
+      <button class="voc-fbtn" data-f="new">새 단어</button>
       <button class="voc-fbtn" data-f="all">전체</button>
-      <button class="voc-fbtn" data-f="learning">복습할 단어</button>
-      <button class="voc-fbtn" data-f="theme">주제별 보기</button>
     </div>
     <span class="voc-prog" id="vocProg"></span>
   </div>
@@ -1425,87 +1438,164 @@ var VOCAB=[
  {w:"notable",p:"adj.",k:"주목할 만한",e:"There was a <b>notable</b> improvement in the scores.",t:"학술"}
 ];
 
-var VC={i:0,filter:"all",shown:false};
-function vocDeck(){
-  if(VC.filter==="learning") return VOCAB.filter(function(v){ return S.vocab[v.w]==="learning"; });
-  return VOCAB;
+/* 간격 반복(Leitner SRS) + 능동 인출 퀴즈.
+   단어 상태 S.vocab[w] = {b: 박스 0~5, due:"YYYY-MM-DD"|null}. b0=미학습, b5=마스터. */
+var SRS_INT=[0,1,2,4,7,15];   // 박스 1~5의 복습 간격(일)
+var VC={tab:"review", ni:0, nshown:false, q:null, qi:0, qRes:null};
+function vst(w){ var v=S.vocab[w]; return (v&&typeof v==="object"&&typeof v.b==="number")?v:{b:0,due:null}; }
+function vocMigrate(){
+  var ch=false;
+  Object.keys(S.vocab||{}).forEach(function(w){
+    var v=S.vocab[w];
+    if(typeof v==="string"){ S.vocab[w]= v==="known"?{b:5,due:null}:{b:1,due:fmtISO(today())}; ch=true; }
+    else if(!(v&&typeof v==="object"&&typeof v.b==="number")){ delete S.vocab[w]; ch=true; }
+  });
+  if(ch) save();
 }
-function vocStat(w){ return S.vocab[w]||""; }
+function vocDueWords(){ return VOCAB.filter(function(v){ var s=vst(v.w); return s.b>=1&&s.b<5&&(!s.due||parseISO(s.due)<=today()); }); }
+function vocNewWords(){ return VOCAB.filter(function(v){ return vst(v.w).b===0; }); }
+function vocCount(pred){ var n=0; VOCAB.forEach(function(v){ if(pred(vst(v.w))) n++; }); return n; }
+function vocDueCount(){ return vocDueWords().length; }
+function vocGrade(w,correct){
+  var s=vst(w), box=correct?Math.min(5,(s.b||0)+1):1;
+  S.vocab[w]={b:box, due: box>=5?null:fmtISO(new Date(today().getTime()+SRS_INT[box]*MS))}; save();
+}
+function vocIntroduce(w,confident){
+  var box=confident?2:1;
+  S.vocab[w]={b:box, due:fmtISO(new Date(today().getTime()+SRS_INT[box]*MS))}; save();
+}
+function vocBlank(ex){ return String(ex).replace(/<b>.*?<\/b>/i,"<b>_____</b>"); }
+function vocInfl(ex,w){ var m=/<b>(.*?)<\/b>/i.exec(ex); return m?m[1]:w; }
+
 function renderVocab(){
-  var known=VOCAB.filter(function(v){ return S.vocab[v.w]==="known"; }).length;
-  var learn=VOCAB.filter(function(v){ return S.vocab[v.w]==="learning"; }).length;
-  document.getElementById("vocProg").textContent="아는 단어 "+known+" · 복습 "+learn+" / 총 "+VOCAB.length;
+  vocMigrate();
+  var mastered=vocCount(function(s){return s.b>=5;}),
+      learning=vocCount(function(s){return s.b>=1&&s.b<5;}),
+      fresh=vocNewWords().length, due=vocDueCount();
+  document.getElementById("vocProg").textContent="마스터 "+mastered+" · 학습중 "+learning+" · 새 단어 "+fresh+" / 총 "+VOCAB.length;
+  var labels={review:"오늘 복습"+(due?" ("+due+")":""), "new":"새 단어"+(fresh?" ("+fresh+")":""), all:"전체"};
   Array.prototype.forEach.call(document.querySelectorAll("#vocFilter .voc-fbtn"),function(b){
-    b.classList.toggle("on", b.dataset.f===VC.filter);
+    if(labels[b.dataset.f]!=null) b.textContent=labels[b.dataset.f];
+    var on=b.dataset.f===VC.tab; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
   });
   var cardWrap=document.getElementById("vocCardWrap"), listBox=document.getElementById("vocList");
+  cardWrap.hidden=false; listBox.hidden=true; cardWrap.innerHTML="";
+  if(VC.tab==="all"){ renderVocList(cardWrap,listBox); return; }
+  if(VC.tab==="new"){ renderVocNew(cardWrap); return; }
+  renderVocReview(cardWrap);
+}
 
-  if(VC.filter==="theme"){
-    cardWrap.hidden=true; listBox.hidden=false; listBox.innerHTML="";
-    var themes=[]; VOCAB.forEach(function(v){ if(themes.indexOf(v.t)<0) themes.push(v.t); });
-    themes.forEach(function(th){
-      listBox.appendChild(el("div","voc-th-head",th));
-      VOCAB.filter(function(v){return v.t===th;}).forEach(function(v){
-        var it=el("div","voc-list-item");
-        it.appendChild(el("span","w",v.w+" "+v.p));
-        it.appendChild(el("span","m",v.k));
-        listBox.appendChild(it);
-      });
-    });
+function renderVocReview(box){
+  if(!VC.q){ VC.q=vocDueWords().slice(); VC.qi=0; VC.qRes=null; }
+  if(!VC.q.length){
+    box.appendChild(el("p","empty","오늘 복습할 단어가 없습니다 🎉 ‘새 단어’ 탭에서 더 익히거나 내일 다시 복습하세요."));
     return;
   }
-
-  cardWrap.hidden=false; listBox.hidden=true;
-  var deck=vocDeck();
-  cardWrap.innerHTML="";
-  if(!deck.length){
-    cardWrap.appendChild(el("p","empty","복습할 단어가 없습니다. 카드에서 ‘복습’으로 표시한 단어가 여기 모입니다."));
-    return;
+  if(VC.qi>=VC.q.length){
+    var done=el("div","voc-card");
+    done.appendChild(el("div","voc-word","복습 완료 🎉"));
+    done.appendChild(el("div","voc-pos",VC.q.length+"개를 인출 연습했습니다. 맞힌 단어는 복습 간격이 늘어납니다."));
+    var again=el("button","btn solid","오늘 복습 다시"); again.style.marginTop="16px";
+    again.addEventListener("click",function(){ VC.q=vocDueWords().slice(); VC.qi=0; VC.qRes=null; renderVocab(); });
+    done.appendChild(again); box.appendChild(done); return;
   }
-  if(VC.i>=deck.length) VC.i=0;
-  var v=deck[VC.i];
+  var v=VC.q[VC.qi];
   var card=el("div","voc-card");
-  var head=el("div");
-  head.appendChild(el("div","voc-word",v.w));
-  head.appendChild(el("div","voc-pos",v.p+"  ·  "+(VC.i+1)+" / "+deck.length));
-  var st=vocStat(v.w);
-  if(st) head.appendChild(el("span","voc-badge "+st, st==="known"?"아는 단어":"복습 표시됨"));
-  head.appendChild(el("div","voc-theme",v.t));
-  card.appendChild(head);
+  card.appendChild(el("div","voc-pos","오늘 복습 "+(VC.qi+1)+" / "+VC.q.length+"  ·  뜻을 보고 영어 단어를 떠올려 입력하세요"));
+  card.appendChild(el("div","voc-mean",v.k+"  ("+v.p+")"));
+  var exq=el("div","voc-ex"); exq.innerHTML=vocBlank(v.e); card.appendChild(exq);
 
-  if(VC.shown){
+  if(!VC.qRes){
+    var row=el("div","voc-quiz-row");
+    var inp=document.createElement("input");
+    inp.type="text"; inp.className="voc-input"; inp.placeholder="영어 단어";
+    inp.autocapitalize="off"; inp.autocomplete="off"; inp.spellcheck=false;
+    var submit=el("button","btn solid","확인");
+    function check(){
+      var ans=norm(inp.value); if(!ans) return;
+      var ok = ans===norm(v.w) || ans===norm(vocInfl(v.e,v.w));
+      VC.qRes= ok?"ok":"no"; vocGrade(v.w,ok);
+      if(!ok) VC.q.push(v);
+      renderVocab(); renderDash();
+    }
+    submit.addEventListener("click",check);
+    inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); check(); } });
+    row.appendChild(inp); row.appendChild(submit); card.appendChild(row);
+    var sub=el("div","voc-quiz-sub");
+    var hint=el("button","voc-mini","힌트(첫 글자)");
+    hint.addEventListener("click",function(){ inp.value=v.w.charAt(0); inp.focus(); });
+    var giveup=el("button","voc-mini","모르겠어요");
+    giveup.addEventListener("click",function(){ VC.qRes="no"; vocGrade(v.w,false); VC.q.push(v); renderVocab(); renderDash(); });
+    sub.appendChild(hint); sub.appendChild(giveup); card.appendChild(sub);
+    box.appendChild(card);
+    setTimeout(function(){ try{ inp.focus(); }catch(e){} },0);
+  } else {
+    var res=el("div","voc-result "+(VC.qRes==="ok"?"ok":"no"));
+    res.textContent = VC.qRes==="ok" ? "정답! 다음 복습 간격이 늘어납니다." : "아쉬워요 — 이번 세션에 한 번 더 나옵니다.";
+    card.appendChild(res);
+    card.appendChild(el("div","voc-word2",v.w));
+    var full=el("div","voc-ex"); full.innerHTML=v.e; card.appendChild(full);
+    var nx=el("button","btn solid","다음 →"); nx.style.marginTop="14px";
+    nx.addEventListener("click",function(){ VC.qi++; VC.qRes=null; renderVocab(); });
+    card.appendChild(nx); box.appendChild(card);
+    setTimeout(function(){ try{ nx.focus(); }catch(e){} },0);
+  }
+}
+
+function renderVocNew(box){
+  var list=vocNewWords();
+  if(!list.length){ box.appendChild(el("p","empty","새로 배울 단어를 모두 학습에 넣었습니다. ‘오늘 복습’에서 인출 연습을 이어가세요.")); return; }
+  if(VC.ni>=list.length) VC.ni=0;
+  var v=list[VC.ni];
+  var card=el("div","voc-card");
+  card.appendChild(el("div","voc-pos","새 단어 "+(VC.ni+1)+" / "+list.length+"  ·  "+v.t));
+  card.appendChild(el("div","voc-word",v.w));
+  card.appendChild(el("div","voc-pos",v.p));
+  var act=el("div","voc-actions");
+  if(VC.nshown){
     var back=el("div","voc-back");
     back.appendChild(el("div","voc-mean",v.k));
-    var ex=el("div","voc-ex"); ex.innerHTML=v.e;
-    back.appendChild(ex);
+    var ex=el("div","voc-ex"); ex.innerHTML=v.e; back.appendChild(ex);
     card.appendChild(back);
-  }
-
-  var act=el("div","voc-actions");
-  if(!VC.shown){
-    var showB=el("button","btn solid","뜻 보기");
-    showB.addEventListener("click",function(){ VC.shown=true; renderVocab(); });
-    act.appendChild(showB);
+    var conf=el("button","btn","외웠어요");
+    conf.addEventListener("click",function(){ vocIntroduce(v.w,true); VC.nshown=false; renderVocab(); renderDash(); });
+    var soft=el("button","btn solid","복습에 넣기");
+    soft.addEventListener("click",function(){ vocIntroduce(v.w,false); VC.nshown=false; renderVocab(); renderDash(); });
+    act.appendChild(conf); act.appendChild(soft);
   } else {
-    var knowB=el("button","btn","알아요");
-    knowB.addEventListener("click",function(){ S.vocab[v.w]="known"; save(); vocNext(deck.length); });
-    var revB=el("button","btn solid","복습");
-    revB.addEventListener("click",function(){ S.vocab[v.w]="learning"; save(); vocNext(deck.length); });
-    act.appendChild(knowB); act.appendChild(revB);
+    var showB=el("button","btn solid","뜻 보기");
+    showB.addEventListener("click",function(){ VC.nshown=true; renderVocab(); });
+    act.appendChild(showB);
   }
   act.appendChild(el("span","sp"));
-  var prev=el("button","btn","← 이전");
-  prev.addEventListener("click",function(){ VC.i=(VC.i-1+deck.length)%deck.length; VC.shown=false; renderVocab(); });
-  var next=el("button","btn","다음 →");
-  next.addEventListener("click",function(){ vocNext(deck.length); });
-  act.appendChild(prev); act.appendChild(next);
-  card.appendChild(act);
-  cardWrap.appendChild(card);
+  var skip=el("button","btn","건너뛰기");
+  skip.addEventListener("click",function(){ VC.ni=(VC.ni+1)%list.length; VC.nshown=false; renderVocab(); });
+  act.appendChild(skip);
+  card.appendChild(act); box.appendChild(card);
 }
-function vocNext(len){ VC.i=(VC.i+1)%len; VC.shown=false; renderVocab(); }
+
+function renderVocList(cardWrap,listBox){
+  cardWrap.hidden=true; listBox.hidden=false; listBox.innerHTML="";
+  var themes=[]; VOCAB.forEach(function(v){ if(themes.indexOf(v.t)<0) themes.push(v.t); });
+  themes.forEach(function(th){
+    listBox.appendChild(el("div","voc-th-head",th));
+    VOCAB.filter(function(v){return v.t===th;}).forEach(function(v){
+      var s=vst(v.w), cls=s.b>=5?"m":(s.b>=1?"l":"n"), tag=s.b>=5?"마스터":(s.b>=1?"학습중":"새 단어");
+      var it=el("div","voc-list-item");
+      it.appendChild(el("span","w",v.w+" "+v.p));
+      it.appendChild(el("span","m",v.k));
+      it.appendChild(el("span","voc-tag "+cls,tag));
+      listBox.appendChild(it);
+    });
+  });
+}
 
 Array.prototype.forEach.call(document.querySelectorAll("#vocFilter .voc-fbtn"),function(b){
-  b.addEventListener("click",function(){ VC.filter=b.dataset.f; VC.i=0; VC.shown=false; renderVocab(); });
+  b.addEventListener("click",function(){
+    VC.tab=b.dataset.f; VC.nshown=false; VC.ni=0;
+    if(b.dataset.f==="review"){ VC.q=null; VC.qi=0; VC.qRes=null; }
+    renderVocab();
+  });
 });
 
 /* ================= 학습 런처 (모드 선택) ================= */
@@ -1684,8 +1774,8 @@ function renderDash(){
     tile("1위 오답 원인", top, "warn", mx+"건 / 총 "+S.errors.length);
   } else tile("오답노트","0","","오답을 쌓아보세요");
 
-  var kn=0; VOCAB.forEach(function(v){ if(S.vocab[v.w]==="known") kn++; });
-  tile("단어장", kn+"/"+VOCAB.length, (kn===VOCAB.length?"ok":""), "아는 단어");
+  var due=vocDueCount(), mastered=vocCount(function(s){return s.b>=5;});
+  tile("단어 복습", due===0?"없음":(due+"개"), (due===0?"ok":"warn"), due===0?("마스터 "+mastered):"오늘 인출 퀴즈");
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
