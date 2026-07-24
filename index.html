@@ -1300,21 +1300,22 @@ function parseJSON(txt){
 
 function askTutor(task,payload){
   var pass=store.get("ielts7-pass","");
+  var primaryReason=null;                              // "missing"(404/405) | "network"(TypeError)
   return fetch("/api/tutor",{
     method:"POST",headers:{"content-type":"application/json"},
     body:JSON.stringify({task:task,payload:payload,passcode:pass})
   }).then(function(r){
-    if(r.status===404||r.status===405) return null;   // 함수 미배포 → 폴백
+    if(r.status===404||r.status===405){ primaryReason="missing"; return null; }  // 함수 미배포 → 폴백
     return r.json().then(function(d){
       if(!r.ok) throw new Error(d.error||("HTTP "+r.status));
       return d.result;
     });
   }).catch(function(e){
-    if(e instanceof TypeError) return null;           // 네트워크/CORS → 폴백
+    if(e instanceof TypeError){ primaryReason="network"; return null; }           // 네트워크/CORS → 폴백
     throw e;
   }).then(function(res){
     if(res) return res;
-    // 폴백: Claude.ai 미리보기 환경에서만 동작
+    // 폴백: Claude.ai 미리보기 환경에서만 동작 (실제 배포 사이트에서는 CORS로 막힘)
     return fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({
@@ -1323,13 +1324,21 @@ function askTutor(task,payload){
         messages:[{role:"user",content:clientUserMsg(task,payload)}]
       })
     }).then(function(r){
-      if(!r.ok) throw new Error("AI 튜터를 사용할 수 없습니다. Netlify에 배포하고 ANTHROPIC_API_KEY 환경변수를 설정하세요 (README 참고).");
+      if(!r.ok) throw new Error("AI 튜터를 사용할 수 없습니다. Netlify에 배포하고 API 키 환경변수를 설정하세요 (README 참고).");
       return r.json();
     }).then(function(d){
       var txt=(d.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("\n");
       var p=parseJSON(txt);
       if(!p) throw new Error("튜터 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
       return p;
+    }).catch(function(e){
+      // 폴백까지 네트워크로 실패 → 대개 /api/tutor 서버 함수에 도달하지 못한 것
+      if(e instanceof TypeError){
+        if(primaryReason==="missing")
+          throw new Error("AI 튜터 서버 함수(/api/tutor)를 찾지 못했습니다. 이 사이트가 Netlify에 Git 또는 CLI로 배포됐는지 확인하세요. 드래그앤드롭(정적) 배포에는 서버 함수가 없어 AI 채점이 동작하지 않습니다.");
+        throw new Error("AI 튜터 함수에 연결하지 못했습니다. ① 배포된 사이트 주소로 접속했는지(로컬 파일 열기 아님), ② 최근 재배포가 성공했는지(Netlify → Deploys가 Published) 확인하세요.");
+      }
+      throw e;                                          // 이미 명확한 메시지면 그대로 전달
     });
   });
 }
