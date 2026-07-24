@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IELTS 7.0 · 28일 스프린트</title>
+<meta name="description" content="IELTS Academic 7.0 목표 28일 학습 트래커. 밴드 계산기, 일일 체크리스트, 오답 원인 분석, 실전 타이머.">
+<meta name="theme-color" content="#E8ECF2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --paper:#E8ECF2;
+  --card:#FFFFFF;
+  --ink:#16213A;
+  --ink-soft:#5A6B8C;
+  --rule:#C4CDDB;
+  --mark:#D6285A;
+  --pass:#0F7A6B;
+
+  --f-display:"Bricolage Grotesque","Pretendard",system-ui,sans-serif;
+  --f-body:"Pretendard","Inter",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+
+  --pad:clamp(16px,4vw,32px);
+  --maxw:1120px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  background-image:
+    linear-gradient(to right,rgba(196,205,219,.32) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(196,205,219,.32) 1px,transparent 1px);
+  background-size:28px 28px;
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:var(--pad) var(--pad) 96px}
+
+/* ---------- shared ---------- */
+.eyebrow{
+  font-family:var(--f-mono);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-soft);margin:0 0 10px;
+}
+.panel{
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  padding:clamp(18px,3vw,28px);
+  margin-bottom:20px;
+}
+.panel > h2{
+  font-family:var(--f-display);
+  font-size:clamp(19px,2.4vw,23px);
+  font-weight:600;letter-spacing:-.015em;
+  margin:0 0 4px;
+}
+.panel > .sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 22px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{
+  font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;
+  background:var(--card);border:1px solid var(--rule);border-radius:2px;
+  padding:8px 13px;transition:border-color .15s,color .15s;
+}
+.btn:hover{border-color:var(--ink);}
+.btn.solid{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.solid:hover{background:#0d1729}
+:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+
+input,select,textarea{
+  font:inherit;font-size:14px;color:var(--ink);
+  background:var(--card);border:1px solid var(--rule);border-radius:2px;
+  padding:9px 11px;width:100%;
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-offset:-1px;border-color:var(--ink)}
+label.fl{display:block;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 6px}
+
+/* ---------- masthead ---------- */
+.masthead{
+  display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;
+  border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:26px;
+}
+.masthead h1{
+  font-family:var(--f-display);font-weight:800;letter-spacing:-.03em;
+  font-size:clamp(26px,5vw,42px);line-height:1;margin:0;
+}
+.masthead h1 em{font-style:normal;color:var(--mark)}
+.dday{text-align:right;line-height:1}
+.dday .num{font-family:var(--f-mono);font-weight:600;font-size:clamp(32px,7vw,54px);letter-spacing:-.04em;display:block}
+.dday .lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.setup{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:26px}
+.setup > div{flex:0 1 190px}
+
+/* ---------- signature: band ruler ---------- */
+.ruler{position:relative;padding:6px 0 0}
+.scale{
+  position:relative;height:20px;margin-left:var(--gutter);
+  border-bottom:1px solid var(--rule);
+}
+.scale span{
+  position:absolute;top:0;transform:translateX(-50%);
+  font-family:var(--f-mono);font-size:10.5px;color:var(--ink-soft);
+}
+.ruler{--gutter:78px}
+.track-row{
+  position:relative;display:flex;align-items:center;gap:0;
+  height:52px;margin-left:0;
+}
+.track-name{
+  width:var(--gutter);flex:none;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.track{
+  position:relative;flex:1;height:52px;touch-action:none;cursor:ew-resize;
+}
+.track::before{
+  content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+  background:repeating-linear-gradient(to right,var(--rule) 0 4px,transparent 4px 8px);
+}
+.tick{position:absolute;top:calc(50% - 5px);width:1px;height:10px;background:var(--rule);transform:translateX(-.5px)}
+.tick.whole{top:calc(50% - 8px);height:16px;background:#A9B5C7}
+.marker{
+  position:absolute;top:50%;transform:translate(-50%,-50%);
+  display:flex;align-items:center;justify-content:center;
+  width:52px;height:30px;border-radius:2px;
+  background:var(--card);border:1.5px solid var(--mark);color:var(--mark);
+  font-family:var(--f-mono);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;
+  transition:border-color .18s,color .18s,left .18s cubic-bezier(.2,.8,.3,1);
+  cursor:grab;user-select:none;
+}
+.marker.over{border-color:var(--pass);color:var(--pass)}
+.marker:active{cursor:grabbing}
+.target-line{
+  position:absolute;top:14px;bottom:34px;width:0;
+  border-left:1.5px dashed var(--mark);pointer-events:none;transition:border-color .18s;
+}
+.target-line.hit{border-left-color:var(--pass)}
+.target-flag{
+  position:absolute;top:-4px;left:6px;white-space:nowrap;
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;color:var(--mark);transition:color .18s;
+}
+.target-line.hit .target-flag{color:var(--pass)}
+
+.verdict{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 20px;
+  margin-top:22px;padding-top:18px;border-top:1px solid var(--rule);
+}
+.verdict .big{font-family:var(--f-mono);font-weight:600;font-size:40px;letter-spacing:-.03em;line-height:1;color:var(--mark)}
+.verdict .big.ok{color:var(--pass)}
+.verdict .cap{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.verdict .msg{flex:1 1 260px;font-size:13.5px;color:var(--ink-soft);min-width:220px}
+
+/* ---------- today ---------- */
+.today-head{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.wk-tag{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  border:1px solid var(--rule);border-radius:2px;padding:4px 9px;color:var(--ink-soft);
+}
+.wk-note{
+  font-size:13.5px;color:var(--ink-soft);border-left:2px solid var(--mark);
+  padding:2px 0 2px 12px;margin:0 0 20px;
+}
+.task{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 0;border-bottom:1px solid var(--rule);
+}
+.task:last-child{border-bottom:0}
+.task input[type=checkbox]{
+  appearance:none;flex:none;width:19px;height:19px;margin:0;
+  border:1.5px solid var(--ink-soft);border-radius:2px;background:var(--card);cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.task input[type=checkbox]:checked{background:var(--pass);border-color:var(--pass)}
+.task input[type=checkbox]:checked::after{
+  content:"";display:block;width:5px;height:10px;margin:1px auto 0;
+  border:solid var(--card);border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.task .nm{flex:1;font-size:14.5px}
+.task.done .nm{color:var(--ink-soft);text-decoration:line-through}
+.task .min{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft);flex:none}
+
+/* ---------- 28 grid ---------- */
+.grid28{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px}
+.dow{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;color:var(--ink-soft);text-align:center;padding-bottom:2px}
+.cell{
+  position:relative;aspect-ratio:1;border:1px solid var(--rule);border-radius:2px;
+  background:var(--card);overflow:hidden;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-mono);font-size:12px;color:var(--ink-soft);
+  transition:border-color .15s;
+}
+.cell .fill{position:absolute;left:0;right:0;bottom:0;background:var(--pass);opacity:.16;transition:height .25s}
+.cell .n{position:relative;z-index:1}
+.cell:hover{border-color:var(--ink-soft)}
+.cell.today{border-color:var(--mark);border-width:1.5px;color:var(--mark)}
+.cell.sel{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.cell.sel .fill{background:#7FE3D0;opacity:.34}
+.cell.past{opacity:.5}
+.cell.full .n{color:var(--pass);font-weight:600}
+.cell.sel.full .n{color:#7FE3D0}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--f-mono);font-size:10.5px;color:var(--ink-soft)}
+
+/* ---------- two col ---------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:880px){.cols{grid-template-columns:1fr}}
+
+/* ---------- mocks ---------- */
+.mock-form{display:grid;grid-template-columns:repeat(5,1fr) auto;gap:8px;align-items:end;margin-bottom:18px}
+@media(max-width:620px){.mock-form{grid-template-columns:repeat(2,1fr)}.mock-form .full{grid-column:1/-1}}
+.mock-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:13.5px}
+.mock-row:last-child{border-bottom:0}
+.mock-row .dt{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-soft);flex:none;width:62px}
+.mock-row .bars{flex:1;display:flex;gap:5px}
+.mock-row .bars b{
+  flex:1;font-family:var(--f-mono);font-weight:400;font-size:11.5px;text-align:center;
+  border:1px solid var(--rule);border-radius:2px;padding:3px 0;color:var(--ink-soft);
+}
+.mock-row .ov{font-family:var(--f-mono);font-weight:600;font-size:16px;flex:none;width:46px;text-align:right;color:var(--mark)}
+.mock-row .ov.ok{color:var(--pass)}
+.trend{display:flex;align-items:flex-end;gap:6px;height:70px;margin-bottom:16px;border-bottom:1px solid var(--rule);padding-bottom:0}
+.trend div{flex:1;background:var(--ink);opacity:.85;border-radius:1px 1px 0 0;min-height:2px}
+.trend div.ok{background:var(--pass)}
+
+/* ---------- errors ---------- */
+.cause-bar{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
+.cause-bar .lb{flex:none;width:104px;font-size:12.5px;color:var(--ink-soft)}
+.cause-bar .bg{flex:1;height:16px;background:var(--paper);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.cause-bar .fg{height:100%;background:var(--ink);transition:width .3s}
+.cause-bar .fg.top{background:var(--mark)}
+.cause-bar .ct{flex:none;width:38px;text-align:right;font-family:var(--f-mono);font-size:12px;color:var(--ink-soft)}
+.err-list{max-height:250px;overflow-y:auto;margin-top:18px}
+.err{padding:10px 0;border-bottom:1px solid var(--rule);font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.err .meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);flex:none;width:96px;line-height:1.5}
+.err .tx{flex:1}
+.err .del{flex:none;border:0;background:none;color:var(--ink-soft);font-size:15px;line-height:1;padding:0 2px}
+.err .del:hover{color:var(--mark)}
+.empty{color:var(--ink-soft);font-size:13px;font-style:italic;padding:14px 0}
+
+/* ---------- timer ---------- */
+.clock{
+  font-family:var(--f-mono);font-weight:600;letter-spacing:-.03em;
+  font-size:clamp(46px,11vw,76px);line-height:1;margin:4px 0 6px;
+}
+.clock.run{color:var(--pass)}
+.clock.warn{color:var(--mark)}
+.clock-cap{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);min-height:17px}
+.presets{display:flex;flex-wrap:wrap;gap:7px;margin:20px 0 16px}
+.presets .btn.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* ---------- accordion ---------- */
+details{border-bottom:1px solid var(--rule)}
+details:last-of-type{border-bottom:0}
+summary{
+  list-style:none;cursor:pointer;padding:15px 0;
+  display:flex;align-items:center;gap:12px;
+  font-family:var(--f-display);font-size:16px;font-weight:600;letter-spacing:-.01em;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";margin-left:auto;font-family:var(--f-mono);font-weight:400;color:var(--ink-soft);font-size:17px}
+details[open] summary::after{content:"–"}
+summary .band{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;
+  border:1px solid var(--rule);border-radius:2px;padding:3px 7px;color:var(--ink-soft);font-weight:400;
+}
+details .body{padding:0 0 18px}
+details .body li{margin-bottom:9px;font-size:13.8px;color:#2C3A55}
+details .body ul{margin:0;padding-left:19px}
+details .body strong{color:var(--ink)}
+
+.foot{
+  margin-top:38px;padding-top:18px;border-top:1px solid var(--rule);
+  font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);
+  display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;
+}
+.warnbox{
+  border:1px solid var(--mark);border-left-width:3px;border-radius:2px;
+  padding:11px 14px;font-size:12.5px;color:var(--ink);margin-bottom:20px;
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div>
+    <p class="eyebrow">IELTS Academic · 28-day sprint</p>
+    <h1>목표 <em>7.0</em></h1>
+  </div>
+  <div class="dday">
+    <span class="num" id="ddayNum">D-28</span>
+    <span class="lbl" id="ddayLbl">시험일을 설정하세요</span>
+  </div>
+</header>
+
+<div id="storeWarn"></div>
+
+<div class="setup">
+  <div>
+    <label class="fl" for="examDate">시험 날짜</label>
+    <input type="date" id="examDate">
+  </div>
+  <div style="flex:0 1 auto"><button class="btn" id="resetAll">전체 초기화</button></div>
+</div>
+
+<!-- ============ SIGNATURE: BAND RULER ============ -->
+<section class="panel">
+  <h2>밴드 계산기</h2>
+  <p class="sub">마커를 끌어 목표를 조정하세요. 4개 영역 <strong>합계 27.0</strong>이면 평균 6.75, 공식 규칙상 <strong>Overall 7.0</strong>입니다 — 모든 영역이 7.0선 위에 있을 필요가 없습니다.</p>
+
+  <div class="ruler" id="ruler">
+    <div class="target-line" id="targetLine"><span class="target-flag">7.0 목표선</span></div>
+    <div id="tracks"></div>
+    <div class="scale" id="scale"></div>
+  </div>
+
+  <div class="verdict">
+    <div>
+      <div class="cap">합계</div>
+      <div class="big mono" id="sumVal" style="font-size:26px">28.0</div>
+    </div>
+    <div>
+      <div class="cap">Overall</div>
+      <div class="big mono" id="ovVal">7.0</div>
+    </div>
+    <p class="msg" id="ovMsg"></p>
+  </div>
+</section>
+
+<!-- ============ TODAY ============ -->
+<section class="panel">
+  <div class="today-head">
+    <h2 id="dayTitle">오늘 할 일</h2>
+    <span class="wk-tag" id="wkTag">Week 1</span>
+  </div>
+  <p class="wk-note" id="wkNote"></p>
+  <div id="taskList"></div>
+</section>
+
+<!-- ============ 28-DAY GRID ============ -->
+<section class="panel">
+  <h2>28일 진행</h2>
+  <p class="sub">셀을 누르면 해당 날짜의 할 일로 이동합니다. 채워진 높이가 그날 완료율입니다.</p>
+  <div class="grid28" id="dowRow"></div>
+  <div class="grid28" id="grid28"></div>
+  <div class="legend">
+    <span id="progText">0 / 0 완료</span>
+    <span style="color:var(--mark)">◻ 오늘</span>
+    <span style="color:var(--pass)">▨ 완료율</span>
+  </div>
+</section>
+
+<div class="cols">
+  <!-- ============ MOCKS ============ -->
+  <section class="panel">
+    <h2>모의고사 기록</h2>
+    <p class="sub">주말 모의 4회의 <strong>추세</strong>가 가장 중요한 지표입니다. 하루 점수에 흔들리지 마세요.</p>
+    <div class="trend" id="trend"></div>
+    <div class="mock-form">
+      <div class="full"><label class="fl" for="mDate">날짜</label><input type="date" id="mDate"></div>
+      <div><label class="fl" for="mL">L</label><input type="number" id="mL" min="0" max="9" step="0.5" placeholder="6.5"></div>
+      <div><label class="fl" for="mR">R</label><input type="number" id="mR" min="0" max="9" step="0.5" placeholder="6.5"></div>
+      <div><label class="fl" for="mW">W</label><input type="number" id="mW" min="0" max="9" step="0.5" placeholder="6.0"></div>
+      <div><label class="fl" for="mS">S</label><input type="number" id="mS" min="0" max="9" step="0.5" placeholder="6.5"></div>
+      <div><button class="btn solid" id="addMock">기록</button></div>
+    </div>
+    <div id="mockList"></div>
+  </section>
+
+  <!-- ============ ERRORS ============ -->
+  <section class="panel">
+    <h2>오답 원인 분포</h2>
+    <p class="sub">이 화면의 목적은 오답 자체가 아니라 <strong>원인의 비율</strong>입니다. 어휘가 1위면 단어를, 시간이 1위면 푸는 순서를 고치세요.</p>
+    <div id="causeChart"></div>
+    <div class="mock-form" style="grid-template-columns:1fr 1fr;margin-top:20px">
+      <div><label class="fl" for="eArea">영역</label>
+        <select id="eArea"><option>Listening</option><option>Reading</option><option>Writing</option><option>Speaking</option></select></div>
+      <div><label class="fl" for="eCause">원인</label>
+        <select id="eCause"><option>어휘 모름</option><option>패러프레이즈</option><option>시간 부족</option><option>함정</option><option>철자·형태</option></select></div>
+      <div class="full"><label class="fl" for="eNote">다음엔 어떻게 다르게 할 것인가 (한 문장)</label>
+        <input type="text" id="eNote" placeholder="예: NG는 지문에 언급 없을 때만 고른다" maxlength="90"></div>
+      <div class="full"><button class="btn solid" id="addErr">오답 추가</button></div>
+    </div>
+    <div class="err-list" id="errList"></div>
+  </section>
+</div>
+
+<!-- ============ TIMER ============ -->
+<section class="panel">
+  <h2>실전 타이머</h2>
+  <p class="sub">시험은 시간 관리 싸움입니다. 연습부터 실제 배분으로 하세요.</p>
+  <div class="clock mono" id="clock">40:00</div>
+  <div class="clock-cap" id="clockCap">Writing Task 2 · 실전 40분</div>
+  <div class="presets" id="presets"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn solid" id="startBtn">시작</button>
+    <button class="btn" id="resetBtn">되돌리기</button>
+  </div>
+</section>
+
+<!-- ============ REFERENCE ============ -->
+<section class="panel">
+  <h2>영역별 핵심 기술</h2>
+  <p class="sub">막힐 때 여는 곳. 매일 읽을 필요는 없습니다.</p>
+  <div id="ref"></div>
+</section>
+
+<footer class="foot">
+  <span id="saveNote">브라우저에 자동 저장됩니다</span>
+  <span>28일 · 하루 2~3시간 · 목표 Overall 7.0</span>
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- storage adapter (localStorage → memory fallback) --------- */
+var store = (function(){
+  var ok = true, mem = {};
+  try { window.localStorage.setItem("__t","1"); window.localStorage.removeItem("__t"); }
+  catch(e){ ok = false; }
+  return {
+    persistent: ok,
+    get: function(k,d){
+      try { var v = ok ? window.localStorage.getItem(k) : mem[k];
+            return v == null ? d : JSON.parse(v); } catch(e){ return d; }
+    },
+    set: function(k,v){
+      try { var s = JSON.stringify(v); if(ok) window.localStorage.setItem(k,s); else mem[k]=s; } catch(e){}
+    },
+    clear: function(){ try{ if(ok) window.localStorage.removeItem(KEY); else delete mem[KEY]; }catch(e){} }
+  };
+})();
+var KEY = "ielts7-sprint-v1";
+
+/* ---------------- data ---------------- */
+var ROTATION = {
+  1:{d:"월",t:[["Listening 1세트 + 리뷰",60],["Writing Task 1 작성·첨삭",40],["어휘 정리",20]]},
+  2:{d:"화",t:[["Reading 3지문 + 리뷰",80],["Speaking Part 1·2 녹음",30],["오답노트",15]]},
+  3:{d:"수",t:[["Listening 1세트 + 리뷰",60],["Writing Task 2 실전 40분 + 첨삭",70],["어휘 정리",20]]},
+  4:{d:"목",t:[["Reading 풀세트 + 리뷰",90],["Speaking Part 3 녹음",30],["오답노트",15]]},
+  5:{d:"금",t:[["Writing Task 1+2 연속",60],["첨삭·모범답안 분석",40],["Listening Part 4 집중",20]]},
+  6:{d:"토",t:[["풀 모의고사 (L+R+W 연속)",165],["Speaking 셀프 점검",15]]},
+  0:{d:"일",t:[["모의고사 전체 리뷰",90],["어휘 복습",30]]}
+};
+var WEEKS = [
+  {t:"진단 + 기술 세팅", n:"첫날 반드시 풀 모의고사 1회. 현재 위치를 모르면 계획이 무의미합니다. 아직 속도보다 정확도.", g:"목표 L 6.5 / R 6.5"},
+  {t:"약점 집중", n:"오답노트에서 가장 많이 틀린 유형 2개만 골라 20문제씩 몰아 풀기. 보통 Listening Part 3·4와 Reading의 T/F/NG가 범인입니다.", g:"목표 L 7.0 / R 7.0"},
+  {t:"시간 압박 적응", n:"모든 연습을 실제보다 5분 짧게. Reading은 지문당 20분 엄수, 넘으면 무조건 다음 지문으로.", g:"목표 L 7.5 / R 7.5"},
+  {t:"실전화 + 정리", n:"새 문제집 시작 금지. 틀린 문제 재풀이와 오답노트 회독만. 시험 전날은 공부하지 말고 일찍 자세요.", g:"실전 감각 유지"}
+];
+var CAUSES = ["어휘 모름","패러프레이즈","시간 부족","함정","철자·형태"];
+var PRESETS = [
+  {l:"Writing Task 2", s:2400, c:"Writing Task 2 · 실전 40분"},
+  {l:"Writing Task 1", s:1200, c:"Writing Task 1 · 20분"},
+  {l:"Reading 지문 1개", s:1200, c:"Reading · 지문당 20분 엄수"},
+  {l:"Listening 1세트", s:1800, c:"Listening · 30분"},
+  {l:"Speaking P2 준비", s:60, c:"Speaking Part 2 · 준비 1분"},
+  {l:"Speaking P2 발화", s:120, c:"Speaking Part 2 · 2분을 꽉 채우세요"}
+];
+var REF = [
+  {h:"Listening", b:"목표 7.5 · 32~34 / 40", li:[
+    "문제를 먼저 읽고 답의 <strong>형태</strong>를 예측한다 — 숫자? 명사? 복수형? 이 습관 하나가 2~3점을 만듭니다.",
+    "Part 4는 휴지가 없는 강의체. 대부분 여기서 무너지므로 <strong>Part 4만 하루 20분</strong> 따로 훈련.",
+    "오답의 약 40%는 실력이 아니라 <strong>철자·복수형·대소문자</strong>입니다. 채점할 때 별도로 집계하세요.",
+    "정답은 항상 <strong>패러프레이즈</strong>로 나옵니다. 문제지 단어가 그대로 들리면 오히려 함정.",
+    "놓친 문제는 즉시 버리고 다음으로. 하나 붙잡다가 셋을 잃습니다."]},
+  {h:"Reading", b:"목표 7.5 · 33~35 / 40", li:[
+    "정독 금지. 각 문단 첫 문장만 훑어 <strong>지문 지도</strong>를 30초에 그리고 바로 문제로.",
+    "지문당 20분 — 스키밍 3분 / 문제 15분 / 확인 2분.",
+    "<strong>T / F / NG</strong>: False는 지문이 반대로 말한 것, NG는 아예 언급이 없는 것. 상식으로 고르면 틀립니다.",
+    "<strong>Matching Headings</strong>는 가장 오래 걸리므로 맨 마지막에.",
+    "마지막 지문이 가장 어렵습니다. 시간 배분을 어기면 여기서 통째로 날아갑니다."]},
+  {h:"Writing", b:"목표 6.5 방어", li:[
+    "<strong>Task 2를 먼저 씁니다.</strong> 배점이 2배인데 뒤에 두면 시간에 쫓깁니다. Task 2 40분 → Task 1 20분.",
+    "<strong>Task Response가 최우선</strong>: 질문의 모든 부분에 답하고 입장을 끝까지 일관되게. 어려운 단어를 써도 질문에 안 답하면 6.0을 못 넘습니다.",
+    "Task 2 구조 고정 — 서론(패러프레이즈+입장) / 본론1(주장→설명→예시) / 본론2(주장→설명→예시) / 결론(입장 재확인).",
+    "<strong>암기 템플릿 문구는 감점</strong>입니다. \"In this ever-changing modern world…\" 류는 쓰지 마세요.",
+    "어휘는 화려함보다 <strong>정확성</strong>. 뜻을 정확히 모르는 단어를 쓰면 Lexical Resource가 내려갑니다.",
+    "문법은 다양성 + <strong>정확성</strong>. 틀린 복문보다 맞는 단문이 낫습니다. 관계대명사·조건절·분사구문 셋이면 충분.",
+    "Task 1은 <strong>Overview 문단이 없으면 6.0 이상 불가</strong>. 수치 나열이 아니라 전체 추세를 쓰세요.",
+    "Task 1 150자 / Task 2 250자 이상. 미달은 감점, Task 2는 270~290자가 적정."]},
+  {h:"Speaking", b:"목표 6.5~7.0 방어", li:[
+    "<strong>유창성이 정확성보다 배점이 큽니다.</strong> 막혀서 계속 고쳐 말하면 점수가 내려갑니다. 틀려도 밀고 나가세요.",
+    "Part 1: 한 단어로 답하지 말고 <strong>2~3문장으로 확장</strong> — 이유나 예시 하나 붙이기.",
+    "Part 2: 준비 1분에 키워드 5개만 적고 2분을 꽉 채웁니다. 일찍 끝나면 감점.",
+    "Part 3: \"It depends on…\", \"I'd say generally…, although…\" 같은 <strong>사고 확장 틀</strong>을 익혀두면 막히지 않습니다.",
+    "<strong>반드시 녹음해서 다시 들으세요.</strong> 반복 표현과 침묵 구간은 들어봐야 보입니다.",
+    "발음은 원어민처럼 될 필요 없습니다. 알아들을 수 있으면 7.0에 문제없습니다."]},
+  {h:"자주 하는 실수", b:"읽고 피하기", li:[
+    "<strong>문제집을 여러 권 산다</strong> — 케임브리지 3권을 두 번 푸는 게 여섯 권을 한 번 푸는 것보다 낫습니다.",
+    "<strong>Writing을 첨삭 없이 쓴다</strong> — 피드백 없는 반복은 나쁜 습관만 굳힙니다. 주 2회는 점검받으세요.",
+    "<strong>모의고사를 부분적으로 푼다</strong> — 실제는 2시간 45분 연속. 체력 문제는 실전에서만 드러납니다.",
+    "<strong>어휘를 리스트로 외운다</strong> — 문맥 없는 단어장은 거의 쓸모없습니다. 기출에서 만난 단어만 문장째로.",
+    "<strong>Speaking을 소리 내지 않고 준비한다</strong> — 머릿속 연습은 시험장에서 작동하지 않습니다."]}
+];
+
+/* ---------------- state ---------------- */
+var S = store.get(KEY, null) || {
+  exam:"", done:{}, mocks:[], errors:[],
+  band:{L:7.5,R:7.5,W:6.5,S:6.5}, sel:null
+};
+if(!S.band) S.band = {L:7.5,R:7.5,W:6.5,S:6.5};
+if(!S.done) S.done = {};
+if(!S.mocks) S.mocks = [];
+if(!S.errors) S.errors = [];
+function save(){ store.set(KEY,S); }
+
+/* ---------------- date helpers ---------------- */
+var MS = 86400000;
+function midnight(d){ var x=new Date(d); x.setHours(0,0,0,0); return x; }
+function today(){ return midnight(new Date()); }
+function fmtISO(d){ var m=d.getMonth()+1,dd=d.getDate(); return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(dd<10?"0":"")+dd; }
+function parseISO(s){ if(!s) return null; var p=s.split("-"); return midnight(new Date(+p[0],+p[1]-1,+p[2])); }
+function startDate(){
+  var ex = parseISO(S.exam);
+  if(!ex) return null;
+  return new Date(ex.getTime() - 27*MS);
+}
+function dateOf(i){ var st=startDate(); return st ? new Date(st.getTime()+i*MS) : null; }
+function todayIndex(){
+  var st=startDate(); if(!st) return null;
+  var i = Math.round((today()-st)/MS);
+  return (i>=0 && i<=27) ? i : null;
+}
+function tasksFor(i){
+  var d = dateOf(i);
+  var dow = d ? d.getDay() : ((i%7)+1)%7;
+  return ROTATION[dow];
+}
+
+/* ---------------- band math (official IELTS rounding) ---------------- */
+function overallOf(l,r,w,s){
+  var avg=(l+r+w+s)/4;
+  return Math.round(avg*2)/2;      // 6.25→6.5, 6.75→7.0, 6.125→6.0
+}
+function fmtBand(v){ return v.toFixed(1); }
+
+/* ================= BAND RULER ================= */
+var MIN=4, MAX=9;
+var ORDER=[["L","Listening"],["R","Reading"],["W","Writing"],["S","Speaking"]];
+function pct(v){ return (v-MIN)/(MAX-MIN)*100; }
+
+function buildRuler(){
+  var tracks=document.getElementById("tracks");
+  tracks.innerHTML="";
+  ORDER.forEach(function(o){
+    var row=document.createElement("div"); row.className="track-row";
+    var nm=document.createElement("div"); nm.className="track-name"; nm.textContent=o[1].slice(0,4).toUpperCase();
+    nm.title=o[1];
+    var tr=document.createElement("div"); tr.className="track"; tr.dataset.k=o[0];
+    for(var v=MIN; v<=MAX; v+=0.5){
+      var tk=document.createElement("div");
+      tk.className="tick"+(v%1===0?" whole":"");
+      tk.style.left=pct(v)+"%";
+      tr.appendChild(tk);
+    }
+    var mk=document.createElement("div");
+    mk.className="marker"; mk.id="mk"+o[0];
+    mk.setAttribute("role","slider"); mk.setAttribute("tabindex","0");
+    mk.setAttribute("aria-label",o[1]+" 목표 밴드");
+    mk.setAttribute("aria-valuemin",MIN); mk.setAttribute("aria-valuemax",MAX);
+    tr.appendChild(mk);
+    row.appendChild(nm); row.appendChild(tr);
+    tracks.appendChild(row);
+    bindTrack(tr, mk, o[0]);
+  });
+
+  var sc=document.getElementById("scale"); sc.innerHTML="";
+  for(var v2=MIN; v2<=MAX; v2++){
+    var sp=document.createElement("span");
+    sp.style.left=pct(v2)+"%"; sp.textContent=v2.toFixed(1);
+    sc.appendChild(sp);
+  }
+}
+function bindTrack(tr, mk, key){
+  function setFromX(clientX){
+    var b=tr.getBoundingClientRect();
+    var p=Math.min(1,Math.max(0,(clientX-b.left)/b.width));
+    var raw=MIN+p*(MAX-MIN);
+    S.band[key]=Math.round(raw*2)/2;
+    renderRuler(); save();
+  }
+  var dragging=false;
+  tr.addEventListener("pointerdown",function(e){
+    dragging=true; tr.setPointerCapture(e.pointerId); setFromX(e.clientX); e.preventDefault();
+  });
+  tr.addEventListener("pointermove",function(e){ if(dragging) setFromX(e.clientX); });
+  tr.addEventListener("pointerup",function(){ dragging=false; });
+  tr.addEventListener("pointercancel",function(){ dragging=false; });
+  mk.addEventListener("keydown",function(e){
+    var step=0;
+    if(e.key==="ArrowRight"||e.key==="ArrowUp") step=0.5;
+    else if(e.key==="ArrowLeft"||e.key==="ArrowDown") step=-0.5;
+    else return;
+    e.preventDefault();
+    S.band[key]=Math.min(MAX,Math.max(MIN,S.band[key]+step));
+    renderRuler(); save();
+  });
+}
+function renderRuler(){
+  var b=S.band, sum=b.L+b.R+b.W+b.S;
+  var ov=overallOf(b.L,b.R,b.W,b.S);
+  ORDER.forEach(function(o){
+    var mk=document.getElementById("mk"+o[0]);
+    var v=b[o[0]];
+    mk.style.left=pct(v)+"%";
+    mk.textContent=fmtBand(v);
+    mk.className="marker"+(v>=7?" over":"");
+    mk.setAttribute("aria-valuenow",v);
+    mk.setAttribute("aria-valuetext",fmtBand(v)+" 밴드");
+  });
+  var tl=document.getElementById("targetLine");
+  var g=parseFloat(getComputedStyle(document.getElementById("ruler")).getPropertyValue("--gutter"))||78;
+  tl.style.left="calc("+g+"px + (100% - "+g+"px) * "+(pct(7)/100)+")";
+  tl.className="target-line"+(ov>=7?" hit":"");
+
+  document.getElementById("sumVal").textContent=sum.toFixed(1);
+  var ovEl=document.getElementById("ovVal");
+  ovEl.textContent=fmtBand(ov);
+  ovEl.className="big mono"+(ov>=7?" ok":"");
+
+  var msg=document.getElementById("ovMsg"), need=27-sum, slack=sum-27;
+  var lowest=Math.min(b.L,b.R,b.W,b.S);
+  var warn = lowest<6.5
+    ? " <br><span style='color:var(--mark)'>주의: 최저 영역이 "+fmtBand(lowest)+"입니다. 지원처가 <strong>영역별 최저 6.5</strong>를 요구하면 Overall 7.0이어도 탈락합니다 — 요강을 먼저 확인하세요.</span>"
+    : "";
+  if(ov>=7){
+    msg.innerHTML=(slack>0
+      ? "7.0 달성. 여유 <span class='mono'>"+slack.toFixed(1)+"</span>밴드 — 한 영역이 이만큼 무너져도 버팁니다."
+      : "정확히 27.0. 여유가 <strong>0</strong>이니 한 영역만 0.5 떨어져도 6.5가 됩니다. L/R에서 0.5를 더 벌어두세요.")+warn;
+  } else {
+    msg.innerHTML="합계가 <span class='mono'>"+need.toFixed(1)+"</span>밴드 부족합니다. 한 달 안에서는 <strong>Listening과 Reading을 올리는 쪽</strong>이 Writing을 올리는 것보다 훨씬 빠릅니다."+warn;
+  }
+}
+
+/* ================= D-DAY ================= */
+function renderDday(){
+  var num=document.getElementById("ddayNum"), lbl=document.getElementById("ddayLbl");
+  var ex=parseISO(S.exam);
+  if(!ex){ num.textContent="D-28"; lbl.textContent="시험일을 설정하세요"; return; }
+  var diff=Math.round((ex-today())/MS);
+  num.textContent = diff>0 ? "D-"+diff : (diff===0 ? "D-DAY" : "종료");
+  num.style.color = (diff<=7 && diff>=0) ? "var(--mark)" : "";
+  lbl.textContent = diff>0 ? (S.exam+" 시험") : (diff===0 ? "오늘입니다. 잘 하고 오세요" : S.exam+" 시험 종료");
+}
+
+/* ================= TASKS ================= */
+function renderTasks(){
+  var i = (S.sel==null) ? todayIndex() : S.sel;
+  var title=document.getElementById("dayTitle"), tag=document.getElementById("wkTag"),
+      note=document.getElementById("wkNote"), list=document.getElementById("taskList");
+
+  if(!S.exam){
+    title.textContent="오늘 할 일";
+    tag.textContent="—";
+    note.textContent="위에서 시험 날짜를 먼저 설정하면 28일 일정이 생성됩니다.";
+    list.innerHTML="<p class='empty'>시험 날짜 설정 대기 중</p>";
+    return;
+  }
+  if(i==null) i = (today()<startDate()) ? 0 : 27;
+
+  var d=dateOf(i), rot=tasksFor(i), wk=WEEKS[Math.floor(i/7)];
+  var isToday = (todayIndex()===i);
+  title.textContent = (isToday?"오늘 · ":"") + "Day "+(i+1)+" — "+(d.getMonth()+1)+"/"+d.getDate()+" ("+rot.d+")";
+  tag.textContent = "Week "+(Math.floor(i/7)+1)+" · "+wk.t;
+  note.innerHTML = wk.n + " <span class='mono' style='color:var(--ink)'>"+wk.g+"</span>";
+
+  list.innerHTML="";
+  rot.t.forEach(function(t,j){
+    var k=i+"-"+j, on=!!S.done[k];
+    var row=document.createElement("div"); row.className="task"+(on?" done":"");
+    var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=on; cb.id="cb"+k;
+    var lb=document.createElement("label"); lb.className="nm"; lb.htmlFor="cb"+k; lb.textContent=t[0];
+    var mn=document.createElement("span"); mn.className="min"; mn.textContent=t[1]+"분";
+    cb.addEventListener("change",function(){
+      if(cb.checked) S.done[k]=1; else delete S.done[k];
+      save(); renderTasks(); renderGrid();
+    });
+    row.appendChild(cb); row.appendChild(lb); row.appendChild(mn);
+    list.appendChild(row);
+  });
+}
+
+/* ================= 28 GRID ================= */
+function renderGrid(){
+  var dowRow=document.getElementById("dowRow"), grid=document.getElementById("grid28");
+  var labels = S.exam ? weekdayLabels() : ["월","화","수","목","금","토","일"];
+  dowRow.innerHTML="";
+  labels.forEach(function(l){ var e=document.createElement("div"); e.className="dow"; e.textContent=l; dowRow.appendChild(e); });
+
+  grid.innerHTML="";
+  var ti=todayIndex(), total=0, doneN=0;
+  for(var i=0;i<28;i++){
+    var rot=tasksFor(i), n=rot.t.length, dn=0;
+    for(var j=0;j<n;j++) if(S.done[i+"-"+j]) dn++;
+    total+=n; doneN+=dn;
+
+    var c=document.createElement("button");
+    c.className="cell"
+      + (ti===i?" today":"")
+      + ((S.sel==null?ti:S.sel)===i?" sel":"")
+      + (dn===n?" full":"")
+      + ((ti!=null && i<ti)?" past":"");
+    var f=document.createElement("div"); f.className="fill"; f.style.height=(n?dn/n*100:0)+"%";
+    var t=document.createElement("span"); t.className="n"; t.textContent=i+1;
+    c.appendChild(f); c.appendChild(t);
+    c.title = S.exam ? ("Day "+(i+1)+" · "+dn+"/"+n+" 완료") : ("Day "+(i+1));
+    (function(idx){ c.addEventListener("click",function(){ S.sel=idx; save(); renderTasks(); renderGrid(); }); })(i);
+    grid.appendChild(c);
+  }
+  document.getElementById("progText").textContent = doneN+" / "+total+" 완료 ("+Math.round(total?doneN/total*100:0)+"%)";
+}
+function weekdayLabels(){
+  var names=["일","월","화","수","목","금","토"], out=[];
+  for(var i=0;i<7;i++) out.push(names[dateOf(i).getDay()]);
+  return out;
+}
+
+/* ================= MOCKS ================= */
+function renderMocks(){
+  var list=document.getElementById("mockList"), tr=document.getElementById("trend");
+  tr.innerHTML="";
+  if(!S.mocks.length){
+    list.innerHTML="<p class='empty'>아직 기록이 없습니다. 첫 모의고사를 오늘 보세요 — 현재 위치를 모르면 계획을 조정할 수 없습니다.</p>";
+    return;
+  }
+  var sorted=S.mocks.slice().sort(function(a,b){ return a.d<b.d?-1:1; });
+  sorted.forEach(function(m){
+    var ov=overallOf(m.l,m.r,m.w,m.s);
+    var bar=document.createElement("div");
+    bar.style.height=Math.max(4,(ov-4)/5*100)+"%";
+    if(ov>=7) bar.className="ok";
+    bar.title=m.d+" · Overall "+fmtBand(ov);
+    tr.appendChild(bar);
+  });
+  list.innerHTML="";
+  sorted.slice().reverse().forEach(function(m,idx){
+    var ov=overallOf(m.l,m.r,m.w,m.s);
+    var row=document.createElement("div"); row.className="mock-row";
+    var dt=document.createElement("span"); dt.className="dt"; dt.textContent=m.d.slice(5);
+    var bars=document.createElement("div"); bars.className="bars";
+    [["L",m.l],["R",m.r],["W",m.w],["S",m.s]].forEach(function(p){
+      var b=document.createElement("b"); b.textContent=p[0]+" "+fmtBand(p[1]);
+      if(p[1]>=7) b.style.color="var(--pass)";
+      bars.appendChild(b);
+    });
+    var o=document.createElement("span"); o.className="ov"+(ov>=7?" ok":""); o.textContent=fmtBand(ov);
+    var del=document.createElement("button"); del.className="del"; del.textContent="×"; del.setAttribute("aria-label","기록 삭제");
+    del.addEventListener("click",function(){
+      var i=S.mocks.indexOf(m); if(i>-1) S.mocks.splice(i,1); save(); renderMocks();
+    });
+    row.appendChild(dt); row.appendChild(bars); row.appendChild(o); row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+/* ================= ERRORS ================= */
+function renderErrors(){
+  var chart=document.getElementById("causeChart"), list=document.getElementById("errList");
+  var counts={}, max=0;
+  CAUSES.forEach(function(c){ counts[c]=0; });
+  S.errors.forEach(function(e){ if(counts[e.cause]!=null){ counts[e.cause]++; if(counts[e.cause]>max) max=counts[e.cause]; } });
+
+  chart.innerHTML="";
+  CAUSES.forEach(function(c){
+    var row=document.createElement("div"); row.className="cause-bar";
+    var lb=document.createElement("span"); lb.className="lb"; lb.textContent=c;
+    var bg=document.createElement("span"); bg.className="bg";
+    var fg=document.createElement("span");
+    fg.className="fg"+(max>0 && counts[c]===max?" top":"");
+    fg.style.width=(max?counts[c]/max*100:0)+"%"; fg.style.display="block";
+    bg.appendChild(fg);
+    var ct=document.createElement("span"); ct.className="ct"; ct.textContent=counts[c];
+    row.appendChild(lb); row.appendChild(bg); row.appendChild(ct);
+    chart.appendChild(row);
+  });
+
+  list.innerHTML="";
+  if(!S.errors.length){
+    list.innerHTML="<p class='empty'>오답을 5개만 넣어봐도 패턴이 보이기 시작합니다.</p>";
+    return;
+  }
+  S.errors.slice().reverse().forEach(function(e){
+    var row=document.createElement("div"); row.className="err";
+    var m=document.createElement("span"); m.className="meta"; m.innerHTML=e.d.slice(5)+"<br>"+e.area;
+    var t=document.createElement("span"); t.className="tx";
+    t.innerHTML="<strong>"+esc(e.cause)+"</strong>"+(e.note?" — "+esc(e.note):"");
+    var del=document.createElement("button"); del.className="del"; del.textContent="×"; del.setAttribute("aria-label","오답 삭제");
+    del.addEventListener("click",function(){
+      var i=S.errors.indexOf(e); if(i>-1) S.errors.splice(i,1); save(); renderErrors();
+    });
+    row.appendChild(m); row.appendChild(t); row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+/* ================= TIMER ================= */
+var T={ total:2400, left:2400, id:null };
+function renderClock(){
+  var m=Math.floor(T.left/60), s=T.left%60;
+  var el=document.getElementById("clock");
+  el.textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+  el.className="clock mono"+(T.id?(T.left<=60?" warn":" run"):"");
+}
+function tick(){
+  T.left--;
+  if(T.left<=0){ T.left=0; stopTimer(); beep(); document.getElementById("clockCap").textContent="시간 종료 — 실제 시험이라면 여기서 손을 뗍니다"; }
+  renderClock();
+}
+function startTimer(){
+  if(T.id){ stopTimer(); return; }
+  if(T.left<=0) T.left=T.total;
+  T.id=setInterval(tick,1000);
+  document.getElementById("startBtn").textContent="일시정지";
+  renderClock();
+}
+function stopTimer(){
+  if(T.id){ clearInterval(T.id); T.id=null; }
+  document.getElementById("startBtn").textContent="시작";
+  renderClock();
+}
+function beep(){
+  try{
+    var C=window.AudioContext||window.webkitAudioContext; if(!C) return;
+    var ctx=new C(), o=ctx.createOscillator(), g=ctx.createGain();
+    o.type="sine"; o.frequency.value=660;
+    g.gain.setValueAtTime(.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.18,ctx.currentTime+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+1.1);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+1.15);
+  }catch(e){}
+}
+function buildPresets(){
+  var box=document.getElementById("presets");
+  PRESETS.forEach(function(p,i){
+    var b=document.createElement("button");
+    b.className="btn"+(i===0?" on":""); b.textContent=p.l;
+    b.addEventListener("click",function(){
+      stopTimer();
+      T.total=p.s; T.left=p.s;
+      document.getElementById("clockCap").textContent=p.c;
+      Array.prototype.forEach.call(box.children,function(c){ c.className="btn"; });
+      b.className="btn on";
+      renderClock();
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ================= REFERENCE ================= */
+function buildRef(){
+  var box=document.getElementById("ref");
+  REF.forEach(function(r){
+    var d=document.createElement("details");
+    var s=document.createElement("summary");
+    s.innerHTML=esc(r.h)+" <span class='band'>"+esc(r.b)+"</span>";
+    var b=document.createElement("div"); b.className="body";
+    var ul=document.createElement("ul");
+    r.li.forEach(function(x){ var li=document.createElement("li"); li.innerHTML=x; ul.appendChild(li); });
+    b.appendChild(ul); d.appendChild(s); d.appendChild(b);
+    box.appendChild(d);
+  });
+}
+
+/* ================= WIRING ================= */
+var examEl=document.getElementById("examDate");
+examEl.value=S.exam||"";
+examEl.addEventListener("change",function(){
+  S.exam=examEl.value; S.sel=null; save();
+  renderDday(); renderTasks(); renderGrid();
+});
+
+document.getElementById("addMock").addEventListener("click",function(){
+  var d=document.getElementById("mDate").value||fmtISO(today());
+  function v(id){ var n=parseFloat(document.getElementById(id).value); return isNaN(n)?null:Math.min(9,Math.max(0,Math.round(n*2)/2)); }
+  var l=v("mL"),r=v("mR"),w=v("mW"),s=v("mS");
+  if(l==null||r==null||w==null||s==null){ alert("네 영역 점수를 모두 입력하세요."); return; }
+  S.mocks.push({d:d,l:l,r:r,w:w,s:s}); save(); renderMocks();
+  ["mL","mR","mW","mS"].forEach(function(id){ document.getElementById(id).value=""; });
+});
+
+document.getElementById("addErr").addEventListener("click",function(){
+  var note=document.getElementById("eNote").value.trim();
+  S.errors.push({
+    d: fmtISO(today()),
+    area: document.getElementById("eArea").value,
+    cause: document.getElementById("eCause").value,
+    note: note
+  });
+  save(); renderErrors();
+  document.getElementById("eNote").value="";
+});
+
+document.getElementById("startBtn").addEventListener("click",startTimer);
+document.getElementById("resetBtn").addEventListener("click",function(){
+  stopTimer(); T.left=T.total; renderClock();
+});
+
+document.getElementById("resetAll").addEventListener("click",function(){
+  if(!confirm("모든 기록(체크·모의고사·오답)을 지웁니다. 되돌릴 수 없습니다.")) return;
+  S={exam:"",done:{},mocks:[],errors:[],band:{L:7.5,R:7.5,W:6.5,S:6.5},sel:null};
+  save(); examEl.value="";
+  renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors();
+});
+
+if(!store.persistent){
+  document.getElementById("storeWarn").innerHTML =
+    "<div class='warnbox'>이 환경에서는 브라우저 저장소를 쓸 수 없어 <strong>새로고침하면 기록이 사라집니다.</strong> Netlify에 배포한 주소에서 열면 정상적으로 저장됩니다.</div>";
+  document.getElementById("saveNote").textContent="저장 불가 — 이 세션에서만 유지";
+}
+
+document.getElementById("mDate").value=fmtISO(today());
+buildRuler(); buildPresets(); buildRef();
+renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors(); renderClock();
+window.addEventListener("resize",renderRuler);
+})();
+</script>
+</body>
+</html>
