@@ -500,6 +500,9 @@ details .body strong{color:var(--ink)}
 .manual-key{width:100%;min-height:120px;resize:vertical;font-family:var(--f-mono);font-size:13px;line-height:1.7;padding:10px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--card);color:var(--ink)}
 .manual-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:12px}
 .manual-hint{font-size:12px;color:var(--ink-soft);flex:1 1 200px;line-height:1.5}
+#manualSectionWrap{margin-bottom:14px}
+#manualSection{width:100%;font-family:var(--f-mono);font-size:13px;padding:9px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--card);color:var(--ink)}
+.manual-secnote{font-size:12px;color:var(--ink-soft);margin:6px 0 0;line-height:1.5;min-height:1em}
 
 /* ---------- 책(ZIP) 워크스페이스 ---------- */
 .book-info{
@@ -881,7 +884,12 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   <!-- AI 없이 풀기 (Cambridge 모드) -->
   <div class="manual-box">
     <div class="manual-h">📘 AI 없이 풀기 — Cambridge 모드</div>
-    <p class="manual-d">AI를 전혀 쓰지 않습니다. 파일을 올리면 <strong>정답 키를 자동으로 찾아</strong> 아래에 채워 드립니다(맞는지만 확인하세요). 그다음 문제는 PDF(또는 실물 책)를 보고 풀고 각 번호의 답을 입력 → 붙여넣은 키로 즉시 채점됩니다. 리스닝은 ZIP 오디오도 재생됩니다. (인터넷·API 불필요)</p>
+    <p class="manual-d">AI를 전혀 쓰지 않습니다. 파일을 올리면 책을 <strong>Test·영역·파트</strong>(예: <code>Test 1 · Reading · Passage 1</code>)로 자동으로 나누고 <strong>정답 키도 자동으로 찾아</strong> 드립니다. 학습할 부분을 하나 고르면 그 부분만 <strong>읽기 좋게 정리</strong>해 보여 주고, 답을 입력하면 즉시 채점됩니다. 리스닝은 ZIP 오디오도 재생됩니다. (인터넷·API 불필요)</p>
+    <div id="manualSectionWrap" hidden>
+      <label class="fl" for="manualSection">학습할 부분 — 책을 Test·영역·파트로 나눴습니다. 하나만 골라 읽고 푸세요.</label>
+      <select id="manualSection"></select>
+      <p class="manual-secnote" id="manualSecNote"></p>
+    </div>
     <label class="fl" for="manualKey">정답 키 — 자동으로 채워집니다 (예: <code>1 B</code> · <code>7 NOT GIVEN</code> · <code>11 albedo</code>). 틀리면 직접 고치세요.</label>
     <textarea id="manualKey" class="manual-key" placeholder="파일을 올리면 여기에 정답 키가 자동으로 채워집니다. 안 되면 책 정답 페이지를 그대로 붙여넣으세요 (한 줄에 ‘번호 정답’, 대체답은 sky/view 처럼 / 로)."></textarea>
     <div class="manual-row">
@@ -2807,6 +2815,8 @@ function resetImportUI(){
   document.getElementById("bookWrap").hidden=true;
   document.getElementById("bookGrid").innerHTML="";
   document.getElementById("bookInfo").textContent="";
+  BOOK_SECTIONS=[];
+  var sw=document.getElementById("manualSectionWrap"); if(sw) sw.hidden=true;
 }
 
 function handlePdfSingle(file){
@@ -2820,6 +2830,7 @@ function handlePdfSingle(file){
     renderPdfPages(); updatePdfSel();
     pdfDone(pages.length+"페이지에서 텍스트를 읽었습니다. AI 변환(AI 모드) 또는 아래 ‘AI 없이 풀기’(Cambridge)로 진행하세요.");
     tryAutoKey(true);   // Cambridge용 정답 키 자동 채움
+    renderSectionPicker();   // 책을 Test·영역·파트로 나눠 고를 수 있게
   }).catch(function(e){
     var m=(e&&e.message)||String(e);
     pdfMsg("PDF를 읽지 못했습니다: "+m+" (오프라인이면 인터넷 연결 후 다시 시도하세요)",true);
@@ -2878,31 +2889,133 @@ function populateManualAudio(){
   var o0=document.createElement("option"); o0.value=""; o0.textContent="오디오 없음(리딩)"; sel.appendChild(o0);
   tests.forEach(function(t){ var o=document.createElement("option"); o.value=String(t); o.textContent="Test "+t+" 리스닝"; sel.appendChild(o); });
 }
+/* ── 업로드한 책을 Test·영역·파트 단위로 분할 (로컬, AI 미사용) ─────────────
+   케임브리지 책의 규칙적인 머리글(Test 1‑4 / LISTENING·READING·WRITING·
+   SPEAKING / Reading Passage 1‑3 / PART 1‑4 / WRITING TASK 1‑2)을 순서대로 훑어
+   ‘Test 1 · Reading · Passage 1’ 같은 학습 단위로 쪼갠다. 뒤쪽 오디오 대본
+   (Audioscripts)은 같은 머리글이 반복돼 노이즈가 되므로 잘라낸다. */
+var SEG_SKMAP={LISTENING:"listening",READING:"reading",WRITING:"writing",SPEAKING:"speaking"};
+var SEG_SKLABEL={listening:"Listening",reading:"Reading",writing:"Writing",speaking:"Speaking"};
+function segmentBook(full){
+  if(!full) return [];
+  var mA=/audio\s*scripts?\b|tapescripts?\b/i.exec(full);
+  var body = mA ? full.slice(0, mA.index) : full;
+  // 구체적 머리글을 일반 SKILL보다 먼저 두어 "READING PASSAGE 1"이 SKILL로만
+  // 소비되지 않게 한다.
+  var re=/\bTest\s+([1-4])\b|\bReading\s+Passage\s+([1-3])\b|\bWRITING\s+TASK\s+([12])\b|\bPART\s+([1-4])\b|\bSection\s+([1-4])\b|\b(LISTENING|READING|WRITING|SPEAKING)\b/gi;
+  var m, units=[], test=1, skill=null;
+  while((m=re.exec(body))){
+    if(m[1]!=null) test=+m[1];
+    else if(m[2]!=null){ skill="reading"; units.push({test:test,skill:"reading",part:"Passage "+m[2],pos:m.index}); }
+    else if(m[3]!=null){ skill="writing"; units.push({test:test,skill:"writing",part:"Task "+m[3],pos:m.index}); }
+    else if(m[4]!=null){ if(skill==="listening"||skill==="speaking") units.push({test:test,skill:skill,part:"Part "+m[4],pos:m.index}); }
+    else if(m[5]!=null){ if(skill==="listening"||skill==="speaking") units.push({test:test,skill:skill,part:"Section "+m[5],pos:m.index}); }
+    else if(m[6]!=null){ var sk=SEG_SKMAP[m[6].toUpperCase()]; if(sk) skill=sk; }
+  }
+  // (test,skill,part) 중복은 첫 등장만 남긴다(반복되는 러닝 헤더 제거).
+  var seen={}, uniq=[];
+  units.forEach(function(u){ var k=u.test+"|"+u.skill+"|"+u.part; if(seen[k]) return; seen[k]=1; uniq.push(u); });
+  uniq.sort(function(a,b){ return a.pos-b.pos; });
+  // 각 단위: 다음 단위 전까지 텍스트를 슬라이스하고 문항 범위(Questions N‑M)를 뽑는다.
+  return uniq.map(function(u,i){
+    var end = i+1<uniq.length ? uniq[i+1].pos : body.length;
+    u.text = body.slice(u.pos, end);
+    var qr=/Questions?\s+(\d+)\s*[-–]\s*(\d+)/gi, qm, lo=null, hi=null;
+    while((qm=qr.exec(u.text))){
+      var a=+qm[1], b=+qm[2], mn=Math.min(a,b), mx=Math.max(a,b);
+      if(mx-mn>40) continue;                       // OCR 오탐(범위가 비정상적으로 큼) 제외
+      if(lo==null||mn<lo)lo=mn; if(hi==null||mx>hi)hi=mx;
+    }
+    u.qFrom=lo; u.qTo=hi;
+    u.label="Test "+u.test+" · "+SEG_SKLABEL[u.skill]+" · "+u.part+(lo!=null?"  (Q"+lo+"–"+hi+")":"");
+    return u;
+  });
+}
+
+/* 추출 텍스트를 읽기 좋은 문단으로 정리(로컬, AI 미사용). 러닝 헤더·워터마크·
+   페이지 번호 등 노이즈를 걷어내고, 문제/지시문 앞에서 줄을 나눈다. */
+var FMT_NOISE=/cambridge university press|in this web service|assessment$|978-\d|ielts-thudang|student'?s book with answers|©|^[A-Z ]{6,}$|^\s*\d{1,3}\s*$|www\.|https?:/i;
+var FMT_ANCHOR=/^(Questions?\s+\d+|Part\s+\d|PART\s+\d|Section\s+\d|SECTION\s+\d|Reading\s+Passage\s+\d|Writing\s+Task\s+\d|WRITING\s+TASK\s+\d|Complete\b|Choose\b|Write\b|Label\b|Match\b|Do\s+the\b|Read\s+the\b|You\s+should\b|In\s+boxes\b|NB\b|\d{1,2}\s+[A-Z][a-z])/;
+function fmtSection(raw){
+  var lines=String(raw||"").replace(/\r/g,"").split(/\n/).map(function(s){ return s.replace(/\s+/g," ").trim(); })
+    .filter(function(s){ return s && !FMT_NOISE.test(s); });
+  var paras=[], buf="";
+  function flush(){ if(buf.trim()) paras.push(buf.trim()); buf=""; }
+  lines.forEach(function(ln){
+    if(FMT_ANCHOR.test(ln)){ flush(); paras.push(ln); return; }
+    buf = buf ? buf+" "+ln : ln;
+    if(/[.!?:]$/.test(ln) && buf.length>40) flush();
+  });
+  flush();
+  return paras;
+}
+
+var BOOK_SECTIONS=[];
+function renderSectionPicker(){
+  var wrap=document.getElementById("manualSectionWrap"), sel=document.getElementById("manualSection"),
+      note=document.getElementById("manualSecNote");
+  if(!wrap||!sel) return;
+  BOOK_SECTIONS = segmentBook(allExtractedText());
+  if(!BOOK_SECTIONS.length){ wrap.hidden=true; return; }
+  sel.innerHTML="";
+  var o0=document.createElement("option"); o0.value=""; o0.textContent="책 전체(구분 없이)"; sel.appendChild(o0);
+  BOOK_SECTIONS.forEach(function(u,i){ var o=document.createElement("option"); o.value=String(i); o.textContent=u.label; sel.appendChild(o); });
+  wrap.hidden=false;
+  note.textContent="총 "+BOOK_SECTIONS.length+"개 부분으로 나눴습니다. 리딩은 Passage 하나, 리스닝은 Part 하나씩 골라 푸는 걸 권합니다.";
+}
+
 function startManual(){
   var st=document.getElementById("manualState");
   var key=parseKey(document.getElementById("manualKey").value);
-  var nums=Object.keys(key).map(Number).sort(function(a,b){return a-b;});
-  if(nums.length<2){ errState(st,"정답 키를 인식하지 못했습니다. ‘1 B’처럼 한 줄에 ‘번호 정답’ 형식으로 붙여넣으세요."); return; }
-  // 지문/문제 텍스트: 선택 페이지(단일 PDF) 또는 업로드한 책 전체(요약)
-  var text="";
-  if(PDFPAGES && PDFPAGES.length && PDFSEL && PDFSEL.size) text=selectedText();
-  else if(PDFPAGES && PDFPAGES.length) text=PDFPAGES.filter(Boolean).join("\n\n");
-  else if(BOOK && BOOK.pages) text=BOOK.pages.filter(Boolean).join("\n\n").slice(0,20000);
+  var keyNums=Object.keys(key).map(Number).sort(function(a,b){return a-b;});
+  if(keyNums.length<2){ errState(st,"정답 키를 인식하지 못했습니다. ‘1 B’처럼 한 줄에 ‘번호 정답’ 형식으로 붙여넣으세요."); return; }
+
+  // 선택한 학습 부분(있으면) — 그 부분의 텍스트만 읽고, 문항 범위로 좁힌다.
+  var selEl=document.getElementById("manualSection");
+  var sec = (selEl && selEl.value!=="" && BOOK_SECTIONS[+selEl.value]) ? BOOK_SECTIONS[+selEl.value] : null;
+
+  // 지문/문제 텍스트
+  var rawText="";
+  if(sec) rawText=sec.text;
+  else if(PDFPAGES && PDFPAGES.length && PDFSEL && PDFSEL.size) rawText=selectedText();
+  else if(PDFPAGES && PDFPAGES.length) rawText=PDFPAGES.filter(Boolean).join("\n\n");
+  else if(BOOK && BOOK.pages) rawText=BOOK.pages.filter(Boolean).join("\n\n").slice(0,20000);
+  var paras=fmtSection(rawText).map(function(p){ return ["",p]; });
+
   var audioTest=document.getElementById("manualAudioSel").value;
   var audio = audioTest ? buildAudioUrls(+audioTest) : [];
+  var isListen = audio.length>0 || (sec && sec.skill==="listening");
+
+  // 채점할 문항 번호: 선택 부분의 범위 안에 있는 키만 사용. 범위 밖(키가 다른
+  // Test·영역이라 안 겹치면)이면 전체 키로 안전하게 되돌린다.
+  var nums=keyNums;
+  if(sec && sec.qFrom!=null){
+    var inRange=keyNums.filter(function(n){ return n>=sec.qFrom && n<=sec.qTo; });
+    if(inRange.length>=2) nums=inRange;
+  }
   var qs=nums.map(function(n){ return {n:n, q:"문항 "+n, a:String(key[n]), ev:""}; });
+
+  var title = sec ? (sec.label.replace(/\s+\(Q.*\)$/,"")+" · 답안지")
+                  : (isListen ? ("Test "+audioTest+" Listening") : "내 문제집")+" · 정답지 채점";
   var test={
-    kind: audio.length ? "listening" : "reading",
-    passage:{ title:(audio.length?("Test "+audioTest+" Listening"):"내 문제집")+" · 정답지 채점", src:"Cambridge 모드 · AI 미사용", paras: text?[["·",text]]:[] },
-    headings:[], questions:[{ g:"정답지 채점 ("+nums.length+"문항)", gi:"문제는 위 지문/PDF(또는 실물 책)를 보고 풀고, 각 번호의 답을 입력하세요.", type:"gap", qs:qs }],
+    kind: isListen ? "listening" : "reading",
+    passage:{ title:title, src:"Cambridge 모드 · AI 미사용 · "+(sec?"이 부분만 표시":"책 전체"), paras: paras },
+    headings:[], questions:[{ g:"정답지 채점 ("+nums.length+"문항)", gi:"위 지문/PDF(또는 실물 책)를 보고 풀고, 각 번호의 답을 입력하세요.", type:"gap", qs:qs }],
     audio:audio, script:"", sample:false, imported:true, manual:true
   };
   if(S.fbmode!=="cambridge"){ S.fbmode="cambridge"; save(); renderFbToggle(); }  // 이 방식은 AI 없이 공식 정답으로 채점
   loadTest(test);
-  pdfDone("정답지 CBT 준비 완료 — "+nums.length+"문항. 위에서 문제를 보고 답을 입력한 뒤 ‘제출·채점’을 누르세요. (AI 미사용)");
+  pdfDone("정답지 CBT 준비 완료 — "+nums.length+"문항"+(sec?" · "+sec.label:"")+". 위에서 문제를 읽고 답을 입력한 뒤 ‘제출·채점’을 누르세요. (AI 미사용)");
   scrollToPanel(/CBT 리딩/);
 }
 document.getElementById("manualStart").addEventListener("click",startManual);
+// 학습 부분을 바꾸면 그 부분의 문항 범위에 맞춰 정답 키 안내를 갱신한다.
+(function(){ var s=document.getElementById("manualSection"); if(s) s.addEventListener("change",function(){
+  var sec=(s.value!==""&&BOOK_SECTIONS[+s.value])?BOOK_SECTIONS[+s.value]:null;
+  var note=document.getElementById("manualSecNote");
+  if(sec) note.textContent=sec.label+" 선택됨"+(sec.qFrom!=null?" — 이 부분의 문항 "+sec.qFrom+"–"+sec.qTo+"번만 채점합니다.":" — 문항 범위를 못 찾아 전체 키로 채점합니다.");
+  else note.textContent="책 전체를 표시합니다(구분 없이).";
+}); })();
 
 /* 정답 키 자동 탐지 (로컬, AI 미사용): 추출 텍스트에서 가장 긴 '번호+짧은 답' 연속 구간을 찾는다 */
 function allExtractedText(){
@@ -3008,6 +3121,7 @@ function handleZip(file){
     document.getElementById("bookGrid").innerHTML="";
     document.getElementById("bookNote").hidden=true;
     var found=tryAutoKey(true); // 로컬로 정답 키 자동 채움(API 미사용)
+    renderSectionPicker();      // 책을 Test·영역·파트로 나눠 고를 수 있게
     pdfDone("책을 읽었습니다. "+(found?"정답 키가 자동으로 채워졌습니다 — ":"")+
       "AI 없이 풀려면 아래 ‘📘 AI 없이 풀기’, AI로 Test별 자동 분석하려면 위 ‘🤖 AI로 분석’을 누르세요.");
   }).catch(function(e){
