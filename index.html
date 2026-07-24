@@ -485,6 +485,27 @@ details .body strong{color:var(--ink)}
 .launch-btn.skill-writing{border-left-color:var(--mark)}
 .launch-btn.skill-speaking{border-left-color:#B45309}
 
+/* ---------- 피드백 모드 토글 ---------- */
+.fb-toggle{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 16px}
+.fb-toggle .fb-lb{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-right:4px}
+.fb-opt{
+  border:1px solid var(--rule);border-radius:2px;background:var(--card);padding:6px 12px;
+  font-size:12.5px;color:var(--ink-soft);cursor:pointer;transition:all .12s;
+}
+.fb-opt:hover{border-color:var(--ink-soft)}
+.fb-opt.on{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600}
+
+/* ---------- Cambridge 공식 피드백 카드 ---------- */
+.cam-ans{padding:9px 0;border-bottom:1px dotted var(--rule);font-size:13.5px;line-height:1.6}
+.cam-ans:last-child{border-bottom:0}
+.cam-n{font-family:var(--f-mono);font-weight:600;font-size:12px;color:var(--ink);margin-right:8px}
+.cam-ans b{color:var(--pass)}
+.cam-ev{font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);margin-top:3px}
+.cam-script{
+  border:1px solid var(--rule);border-radius:2px;background:var(--paper);padding:14px 16px;margin-top:8px;
+  max-height:360px;overflow-y:auto;font-size:13.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;
+}
+
 /* ---------- 단어장 ---------- */
 .voc-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
 .voc-filter{display:flex;gap:6px;flex-wrap:wrap}
@@ -771,9 +792,10 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 <!-- ============ CBT READING ============ -->
 <section class="panel" data-view="study">
   <h2>CBT 리딩 연습</h2>
-  <p class="sub">실제 컴퓨터 시험과 같은 좌우 분할 화면입니다. 제출하면 채점 후 <strong>틀린 문항마다 AI 튜터가 함정 구조와 풀이 팁</strong>을 설명하고, 그 내용이 아래 오답노트에 자동으로 쌓입니다.</p>
+  <p class="sub">실제 컴퓨터 시험과 같은 좌우 분할 화면입니다. 제출하면 채점 후, 아래에서 고른 <strong>피드백 방식</strong>으로 오답을 확인합니다 — <strong>AI 튜터</strong>(함정 구조·풀이 해설, 오답노트 자동 저장) 또는 <strong>Cambridge 공식</strong>(업로드한 책의 정답·오디오 대본).</p>
 
   <div class="test-badge" id="rTestBadge"></div>
+  <div class="fb-toggle" id="fbToggleCbt"></div>
 
   <div class="cbt-bar">
     <span class="lb" id="rTimeLb">남은 시간</span>
@@ -805,6 +827,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   <h2>라이팅 랩</h2>
   <p class="sub">가장 점수가 안 오르는 영역이자, AI 피드백의 가치가 가장 큰 영역입니다. 4개 채점 기준별 밴드와 <strong>고쳐 쓴 문장</strong>을 받습니다.</p>
 
+  <div class="fb-toggle" id="fbToggleWrite"></div>
   <div class="wl-head">
     <div style="flex:0 1 180px"><label class="fl" for="wKind">과제</label>
       <select id="wKind"><option value="task2">Task 2 (40분 · 250단어)</option><option value="task1">Task 1 (20분 · 150단어)</option></select></div>
@@ -977,6 +1000,7 @@ if(!S.mocks) S.mocks = [];
 if(!S.errors) S.errors = [];
 if(!S.mode) S.mode = "plan";
 if(!S.vocab) S.vocab = {};
+if(!S.fbmode) S.fbmode = "ai";      // "ai" | "cambridge"
 function save(){ store.set(KEY,S); }
 
 /* ---------------- date helpers ---------------- */
@@ -2123,7 +2147,10 @@ function gradeReading(auto){
     (c<FLAT.length?" 아래에서 틀린 문항의 튜터 해설을 받으세요.":" 전부 맞혔습니다.");
   renderNav();
 
-  if(c<FLAT.length) explainWrong();
+  if(c<FLAT.length){
+    if(S.fbmode==="cambridge") explainWrongCambridge();
+    else explainWrong();
+  }
 }
 
 function explainWrong(){
@@ -2171,6 +2198,63 @@ function explainWrong(){
     });
   }
   next();
+}
+
+/* ===== 피드백 모드: AI 튜터 / Cambridge 공식 ===== */
+var BOOK_MODELS={};   // Writing 문제 원문 -> {model, comment}
+function renderFbToggle(){
+  ["fbToggleCbt","fbToggleWrite"].forEach(function(id){
+    var host=document.getElementById(id); if(!host) return;
+    host.innerHTML="";
+    host.appendChild(el("span","fb-lb","피드백"));
+    [["ai","🤖 AI 튜터"],["cambridge","📘 Cambridge 공식"]].forEach(function(o){
+      var b=el("button","fb-opt"+(S.fbmode===o[0]?" on":""),o[1]);
+      b.addEventListener("click",function(){ S.fbmode=o[0]; save(); renderFbToggle(); });
+      host.appendChild(b);
+    });
+  });
+}
+
+function explainWrongCambridge(){
+  var wrong=FLAT.filter(function(f){ return !isRight(f.q); });
+  var box=document.getElementById("rFeedback"), st=document.getElementById("rState");
+  busy(st,false); box.innerHTML="";
+  var listening=CUR_TEST.kind==="listening";
+  box.appendChild(el("div","fixh","Cambridge 공식 정답 · 근거 ("+wrong.length+"문항)"));
+  var card=el("div","fb done");
+  wrong.forEach(function(f){
+    var line=el("div","cam-ans");
+    line.appendChild(el("span","cam-n","문항 "+f.q.n));
+    line.appendChild(document.createTextNode("내 답 "+(R.ans[f.q.n]||"(무응답)")+" · 정답 "));
+    line.appendChild(el("b",null,ansText(f.q)));
+    if(!listening){ var p=paraText(f.q.ev); if(p) line.appendChild(el("div","cam-ev","근거: 지문 문단 "+f.q.ev)); }
+    else if(f.q.ev){ line.appendChild(el("div","cam-ev","Section "+f.q.ev+" · 아래 대본에서 확인")); }
+    card.appendChild(line);
+  });
+  box.appendChild(card);
+  if(listening){
+    if(CUR_TEST.script){
+      box.appendChild(el("div","fixh","오디오 대본 (Audioscript)"));
+      var sc=el("div","cam-script"); sc.textContent=CUR_TEST.script; box.appendChild(sc);
+    } else box.appendChild(el("p","dsub","이 테스트에는 오디오 대본이 색인되지 않았습니다. 정답을 확인하고 오디오를 다시 들어보세요."));
+  } else {
+    box.appendChild(el("p","dsub","왼쪽 지문에서 위 문단을 다시 읽으며 근거를 확인하세요. (Cambridge 모드는 AI 해설 없이 공식 정답·근거만 보여줍니다.)"));
+  }
+}
+
+function renderCambridgeWriting(box,m){
+  box.innerHTML="";
+  var card=el("div","fb done");
+  if(m.comment){
+    card.appendChild(el("div","fixh","시험관 코멘트 (Examiner's comment)"));
+    var c=el("p","verdict"); c.textContent=m.comment; card.appendChild(c);
+  }
+  if(m.model){
+    card.appendChild(el("div","fixh","공식 모범답안 (Model answer)"));
+    var mo=el("div","cam-script"); mo.textContent=m.model; card.appendChild(mo);
+  }
+  card.appendChild(el("p","dsub","공식 모범답안과 내 답을 문장 단위로 비교하세요 — 구조, 연결어, 정확한 어휘가 핵심입니다."));
+  box.appendChild(card);
 }
 
 document.getElementById("rStart").addEventListener("click",function(){
@@ -2550,15 +2634,26 @@ function loadBookWriting(res,testN){
   var t1=res.task1&&res.task1.prompt?String(res.task1.prompt).trim():"";
   var note=res.task1&&res.task1.chartNote?String(res.task1.chartNote).trim():"";
   if(!t1 && !t2) throw new Error("Writing 과제를 찾지 못했습니다.");
+  function md(o){ return { model:o&&o.model?String(o.model).trim():"", comment:o&&o.comment?String(o.comment).trim():"" }; }
+  var t1full="", hasModel=false;
   if(t1){
-    TASK1.unshift({ prompt:t1+(note?"\n\n[차트·그림 설명]\n"+note:"")+"\n\n※ 실제 그림·차트는 PDF 원문에서 직접 확인하세요.", chart:null });
+    t1full=t1+(note?"\n\n[차트·그림 설명]\n"+note:"")+"\n\n※ 실제 그림·차트는 PDF 원문에서 직접 확인하세요.";
+    TASK1.unshift({ prompt:t1full, chart:null });
+    BOOK_MODELS[t1full]=md(res.task1);
+    if(BOOK_MODELS[t1full].model||BOOK_MODELS[t1full].comment) hasModel=true;
   }
-  if(t2){ TASK2.unshift(t2); }
+  if(t2){
+    TASK2.unshift(t2);
+    BOOK_MODELS[t2]=md(res.task2);
+    if(BOOK_MODELS[t2].model||BOOK_MODELS[t2].comment) hasModel=true;
+  }
   W.kind = t2 ? "task2" : "task1";
   document.getElementById("wKind").value=W.kind;
   W.i=0; loadWriting();
-  pdfDone("Test "+testN+" Writing 과제를 ‘라이팅 랩’에 넣었습니다. 아래에서 작성 후 채점받으세요.");
-  scrollToPanel(/라이팅 랩/);
+  pdfDone("Test "+testN+" Writing 과제를 ‘라이팅 랩’에 넣었습니다."+
+    (hasModel ? " 공식 모범답안·코멘트도 추출되어 ‘Cambridge 공식’ 모드에서 볼 수 있습니다."
+              : " (이 책에서 공식 모범답안을 찾지 못해, 채점은 AI 튜터 모드로 하세요.)"));
+  setView("study"); scrollToPanel(/라이팅 랩/);
 }
 
 function loadBookSpeaking(res,testN){
@@ -2603,9 +2698,10 @@ function startSkill(testN,skill,ranges){
       scrollToPanel(/CBT 리딩/);
     }).catch(function(e){ pdfMsg((e&&e.message)||"변환 실패",true); });
   } else if(skill==="writing"){
-    var wtext=pagesText(ranges);
+    var sa=(BOOK.index&&BOOK.index.sampleAnswers)||[];
+    var wtext=pagesText(ranges, sa, ak);   // 과제 + 공식 모범답안·코멘트 + 정답 페이지
     if(!wtext){ pdfMsg("Writing 페이지에서 텍스트를 찾지 못했습니다.",true); return; }
-    pdfMsg("Test "+testN+" Writing 과제를 추출하는 중입니다…");
+    pdfMsg("Test "+testN+" Writing 과제·공식 모범답안을 추출하는 중입니다…");
     askTutor("writing_import",{text:wtext}).then(function(res){
       try{ loadBookWriting(res,testN); }catch(e){ pdfMsg(e.message,true); }
     }).catch(function(e){ pdfMsg((e&&e.message)||"추출 실패",true); });
@@ -2737,6 +2833,17 @@ document.getElementById("wClear").addEventListener("click",function(){
 document.getElementById("wGrade").addEventListener("click",function(){
   var essay=document.getElementById("wEssay").value.trim();
   var st=document.getElementById("wState");
+  var curPrompt=W.kind==="task2"?TASK2[W.i%TASK2.length]:TASK1[W.i%TASK1.length].prompt;
+  if(S.fbmode==="cambridge"){
+    var m=BOOK_MODELS[curPrompt];
+    if(m && (m.model||m.comment)){
+      busy(st,false);
+      renderCambridgeWriting(document.getElementById("wFeedback"),m);
+    } else {
+      errState(st,"이 과제에는 업로드한 책의 공식 모범답안·코멘트가 없습니다. 위에서 ‘AI 튜터’로 바꿔 채점하거나, 케임브리지 ZIP을 올려 Writing을 불러오면 공식 모범답안을 볼 수 있습니다.");
+    }
+    return;
+  }
   if(wordCount(essay)<40){ errState(st,"답안이 너무 짧습니다. 최소한 한 문단 이상 쓴 뒤 채점을 받으세요."); return; }
   var t=W.kind==="task2"?null:TASK1[W.i%TASK1.length];
   busy(st,true,"채점 중입니다. 20~40초 걸립니다…");
@@ -2843,7 +2950,7 @@ document.getElementById("mDate").value=fmtISO(today());
 buildRuler(); buildPresets(); buildRef();
 buildPassage(); buildQuestions(); rClock(); renderTestBadge(); renderPdfSaved(); loadWriting(); loadSpeak();
 renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors(); renderClock();
-renderLaunch(); renderVocab();
+renderLaunch(); renderVocab(); renderFbToggle();
 setView("dashboard");
 window.addEventListener("resize",renderRuler);
 })();
