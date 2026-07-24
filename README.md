@@ -55,31 +55,60 @@ GitHub에 올리고 Netlify에서 "Add new project → Import an existing projec
 
 ## AI 튜터 설정
 
+AI 튜터는 **Anthropic(Claude)** 또는 **Google(Gemini)** 중 하나를 골라 쓸 수 있습니다. 환경변수 `AI_PROVIDER`로 선택합니다.
+
+| | Anthropic (기본) | Gemini |
+|---|---|---|
+| 무료 등급 | 없음 (종량제만) | **있음** (무료 티어) |
+| 채점 품질 | 안정적 (특히 Writing) | 준수, 모델·설정에 따라 편차 |
+| 무료로 개인 학습 | ❌ | ✅ 한도 내 가능 |
+
 ### 1. API 키 발급
 
-https://console.anthropic.com 에서 API 키를 만듭니다. **Claude 앱 구독(Pro/Max)과는 별개의 유료 종량제**입니다. 콘솔에서 크레딧을 충전해야 동작합니다.
+- **Anthropic**: https://console.anthropic.com 에서 키 발급. **Claude 앱 구독(Pro/Max)과 별개의 유료 종량제**로, 콘솔에서 크레딧을 충전해야 동작합니다.
+- **Gemini**: https://aistudio.google.com/apikey 에서 키 발급. **무료 티어**가 있어 개인 학습 규모(하루 에세이 몇 편 + 리딩 해설)면 무료 한도 안에서 돌아갈 가능성이 큽니다. 단, 무료 티어는 보통 **주고받은 내용을 Google이 모델 개선에 사용**할 수 있으니, 본인 에세이·스크립트가 학습에 쓰이는 게 꺼려지면 결제(유료 티어)를 켜세요.
 
 ### 2. 환경변수 등록
 
 Netlify → Site configuration → Environment variables
 
+**공통**
+
+| 변수 | 필수 | 설명 |
+|---|---|---|
+| `AI_PROVIDER` | 선택 | `anthropic`(기본) 또는 `gemini` |
+| `TUTOR_PASSCODE` | 선택 | 설정하면 이 값을 아는 사람만 튜터를 쓸 수 있음 |
+
+**Anthropic을 쓸 때** (`AI_PROVIDER=anthropic` 또는 미설정)
+
 | 변수 | 필수 | 설명 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | 필수 | 발급받은 키 |
-| `TUTOR_MODEL` | 선택 | 기본 `claude-sonnet-5`. 모델 오류가 나면 현재 사용 가능한 이름으로 교체 |
-| `TUTOR_PASSCODE` | 선택 | 설정하면 이 값을 아는 사람만 튜터를 쓸 수 있음 |
+| `TUTOR_MODEL` | 선택 | 기본 `claude-sonnet-5` |
+
+**Gemini를 쓸 때** (`AI_PROVIDER=gemini`)
+
+| 변수 | 필수 | 설명 |
+|---|---|---|
+| `GEMINI_API_KEY` | 필수 | 발급받은 키 |
+| `GEMINI_MODEL` | 선택 | 기본 `gemini-2.5-flash`. `gemini-2.5-pro`로 올리면 품질↑·비용↑ |
 
 환경변수를 바꾼 뒤에는 **반드시 재배포**해야 반영됩니다.
 
+> Gemini 2.5 계열은 기본으로 '사고(thinking)'가 켜져 출력 토큰을 소모합니다. 이 앱은 구조화 채점이 잘리지 않도록 **thinking을 꺼서** 호출합니다(pro는 API 제약상 최소값). 그래서 `gemini-2.5-flash` 같은 flash 모델이 가장 잘 맞습니다.
+
 ### 3. 비용 감각
 
-Writing 에세이 1편 채점은 대략 입력 1천 토큰 + 출력 1~2천 토큰 수준입니다. 하루 에세이 2편 + 리딩 오답 해설을 28일 내내 돌려도 통상 몇 달러 범위입니다. 다만 요금은 바뀔 수 있으니 https://claude.com/pricing 에서 확인하세요.
+- **Anthropic**: Writing 에세이 1편 채점은 대략 입력 1천 + 출력 1~2천 토큰 수준. 하루 에세이 2편 + 리딩 해설을 28일 돌려도 통상 몇 달러 범위입니다. https://claude.com/pricing
+- **Gemini**: 무료 티어는 분당·하루 요청 수 제한 안에서 무료. 초과하면 종량제이며 flash 계열은 저렴한 편입니다. 「내 문제집(PDF)」 변환은 한 번에 토큰을 많이 쓰니, 무료 티어라면 지문을 하나씩 나눠 변환하세요. https://ai.google.dev/pricing
+
+무료 한도·모델명·가격은 자주 바뀌니 실제 수치는 각 공식 페이지에서 확인하세요.
 
 ### 4. 공개 URL이 걱정된다면
 
 이 사이트를 배포하면 주소를 아는 사람은 누구나 사용자님 API 키로 튜터를 호출할 수 있습니다. 두 가지 방어책이 들어 있습니다.
 
-- **시스템 프롬프트가 서버에 고정**되어 있습니다. 클라이언트는 `task`와 데이터만 보내며, 프롬프트를 바꿔 범용 챗봇으로 쓸 수 없습니다. 요청은 IELTS 채점 세 종류로만 제한됩니다.
+- **시스템 프롬프트가 서버에 고정**되어 있습니다. 클라이언트는 `task`와 데이터만 보내며, 프롬프트를 바꿔 범용 챗봇으로 쓸 수 없습니다. 요청은 IELTS 채점·PDF 변환 용도로만 제한됩니다.
 - **`TUTOR_PASSCODE`** 를 설정하면 앱 상단 입력란에 같은 값을 넣은 사람만 사용할 수 있습니다. 개인용이라면 이걸 켜두는 걸 권합니다.
 
 그래도 불안하면 사이트 이름을 추측하기 어렵게 짓거나, Netlify의 접근 제어 기능을 쓰세요.

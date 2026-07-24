@@ -6,14 +6,24 @@
  *  2) api.anthropic.com은 브라우저 직접 호출 시 CORS로 막히기 때문
  *  3) 시스템 프롬프트를 서버에 고정해, 공개 URL이 범용 챗봇으로 악용되는 것을 막기 위해
  *
- * 필요한 환경변수 (Netlify → Site configuration → Environment variables):
- *   ANTHROPIC_API_KEY   필수. https://console.anthropic.com 에서 발급
+ * 환경변수 (Netlify → Site configuration → Environment variables):
+ *   AI_PROVIDER         선택. "anthropic"(기본) 또는 "gemini"
+ *
+ *   -- Anthropic(Claude)을 쓸 때 --
+ *   ANTHROPIC_API_KEY   provider가 anthropic이면 필수. https://console.anthropic.com 에서 발급
  *   TUTOR_MODEL         선택. 기본 claude-sonnet-5
- *   TUTOR_PASSCODE      선택. 설정하면 이 값을 아는 사람만 사용 가능
+ *
+ *   -- Gemini를 쓸 때 (AI_PROVIDER=gemini) --
+ *   GEMINI_API_KEY      필수. https://aistudio.google.com/apikey 에서 발급 (무료 티어 있음)
+ *   GEMINI_MODEL        선택. 기본 gemini-2.5-flash
+ *
+ *   TUTOR_PASSCODE      선택(공통). 설정하면 이 값을 아는 사람만 사용 가능
  */
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const PROVIDER = (process.env.AI_PROVIDER || "anthropic").toLowerCase();
 const CAUSES = ["어휘 모름", "패러프레이즈", "시간 부족", "함정", "철자·형태"];
 
 /* ---------- 공통 출력 규약 ---------- */
@@ -168,6 +178,104 @@ function buildUserMessage(task, p) {
   return null;
 }
 
+function maxTokensFor(task) {
+  return task === "import" ? 8000 : task === "reading" ? 1200 : 2500;
+}
+
+/* ---------- 프로바이더별 호출 ---------- */
+/* 성공: { text, usage }  ·  실패: { errStatus, errMsg } */
+async function callAnthropic({ system, userMsg, task }) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { errStatus: 500, errMsg: "서버에 ANTHROPIC_API_KEY가 설정되지 않았습니다. Netlify → Site configuration → Environment variables에서 추가한 뒤 재배포하세요." };
+
+  let res, data;
+  try {
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": ANTHROPIC_VERSION
+      },
+      body: JSON.stringify({
+        model: process.env.TUTOR_MODEL || "claude-sonnet-5",
+        max_tokens: maxTokensFor(task),
+        temperature: task === "import" ? 0 : 0.2,
+        system,
+        messages: [{ role: "user", content: userMsg }]
+      })
+    });
+    data = await res.json();
+  } catch (e) {
+    return { errStatus: 502, errMsg: "Anthropic API에 연결하지 못했습니다: " + e.message };
+  }
+
+  if (!res.ok) {
+    const m = data?.error?.message || "알 수 없는 오류";
+    if (res.status === 401) return { errStatus: 401, errMsg: "API 키가 유효하지 않습니다. 키를 다시 확인하세요." };
+    if (res.status === 429) return { errStatus: 429, errMsg: "요청이 너무 많습니다. 잠시 후 다시 시도하세요." };
+    if (res.status === 400 && /model/i.test(m)) return { errStatus: 400, errMsg: `모델 이름이 올바르지 않습니다 (${m}). 환경변수 TUTOR_MODEL을 현재 사용 가능한 모델로 바꾸세요.` };
+    return { errStatus: res.status, errMsg: m };
+  }
+
+  const text = (data.content || [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+  return { text, usage: data.usage || null };
+}
+
+async function callGemini({ system, userMsg, task }) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return { errStatus: 500, errMsg: "서버에 GEMINI_API_KEY가 설정되지 않았습니다. https://aistudio.google.com/apikey 에서 발급해 Netlify 환경변수에 추가한 뒤 재배포하세요." };
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+  const generationConfig = {
+    temperature: task === "import" ? 0 : 0.2,
+    maxOutputTokens: maxTokensFor(task),
+    responseMimeType: "application/json"
+  };
+  // 2.5 계열은 기본으로 '사고(thinking)'가 켜져 출력 토큰을 소모하므로 구조화 추출에서는 끈다.
+  if (/2\.5/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: /pro/.test(model) ? 128 : 0 };
+
+  let res, data;
+  try {
+    res = await fetch(`${GEMINI_BASE}/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: userMsg }] }],
+        generationConfig
+      })
+    });
+    data = await res.json();
+  } catch (e) {
+    return { errStatus: 502, errMsg: "Gemini API에 연결하지 못했습니다: " + e.message };
+  }
+
+  if (!res.ok) {
+    const m = data?.error?.message || "알 수 없는 오류";
+    if (res.status === 400 && /api[_ ]?key/i.test(m)) return { errStatus: 401, errMsg: "Gemini API 키가 유효하지 않습니다. 키를 다시 확인하세요." };
+    if (res.status === 429) return { errStatus: 429, errMsg: "요청이 너무 많습니다(무료 티어 한도일 수 있습니다). 잠시 후 다시 시도하세요." };
+    if (/model/i.test(m) && /not found|not supported|invalid/i.test(m)) return { errStatus: 400, errMsg: `모델 이름이 올바르지 않습니다 (${m}). 환경변수 GEMINI_MODEL을 확인하세요.` };
+    return { errStatus: res.status, errMsg: m };
+  }
+
+  const cand = (data.candidates || [])[0];
+  if (!cand) {
+    const br = data?.promptFeedback?.blockReason;
+    return { errStatus: 502, errMsg: br ? ("Gemini가 요청을 차단했습니다: " + br) : "Gemini 응답이 비어 있습니다. 다시 시도해 주세요." };
+  }
+  if (cand.finishReason === "MAX_TOKENS") {
+    // 응답이 잘렸을 수 있음 — 텍스트는 그대로 넘겨 파싱을 시도하되, import면 페이지를 줄이도록 유도.
+  }
+  const text = ((cand.content && cand.content.parts) || [])
+    .map((p) => p.text || "")
+    .join("\n");
+  return { text, usage: data.usageMetadata || null };
+}
+
 /* ---------- 핸들러 ---------- */
 export default async (req) => {
   const cors = {
@@ -182,11 +290,6 @@ export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return fail(405, "POST만 허용됩니다.");
 
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    return fail(500, "서버에 ANTHROPIC_API_KEY가 설정되지 않았습니다. Netlify → Site configuration → Environment variables에서 추가한 뒤 재배포하세요.");
-  }
-
   let body;
   try { body = await req.json(); } catch { return fail(400, "요청 본문이 올바른 JSON이 아닙니다."); }
 
@@ -194,47 +297,18 @@ export default async (req) => {
   if (gate && body.passcode !== gate) return fail(401, "패스코드가 올바르지 않습니다.");
 
   const system = SYSTEMS[body.task];
-  if (!system) return fail(400, "알 수 없는 task입니다. writing / reading / speaking 중 하나여야 합니다.");
+  if (!system) return fail(400, "알 수 없는 task입니다. writing / reading / speaking / import 중 하나여야 합니다.");
 
   const userMsg = buildUserMessage(body.task, body.payload || {});
   if (!userMsg) return fail(400, "요청 내용을 조립하지 못했습니다.");
 
-  let res, data;
-  try {
-    res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": ANTHROPIC_VERSION
-      },
-      body: JSON.stringify({
-        model: process.env.TUTOR_MODEL || "claude-sonnet-5",
-        max_tokens: body.task === "import" ? 8000 : body.task === "reading" ? 1200 : 2500,
-        temperature: body.task === "import" ? 0 : 0.2,
-        system,
-        messages: [{ role: "user", content: userMsg }]
-      })
-    });
-    data = await res.json();
-  } catch (e) {
-    return fail(502, "Anthropic API에 연결하지 못했습니다: " + e.message);
-  }
+  const out = PROVIDER === "gemini"
+    ? await callGemini({ system, userMsg, task: body.task })
+    : await callAnthropic({ system, userMsg, task: body.task });
 
-  if (!res.ok) {
-    const m = data?.error?.message || "알 수 없는 오류";
-    if (res.status === 401) return fail(401, "API 키가 유효하지 않습니다. 키를 다시 확인하세요.");
-    if (res.status === 429) return fail(429, "요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
-    if (res.status === 400 && /model/i.test(m)) {
-      return fail(400, `모델 이름이 올바르지 않습니다 (${m}). 환경변수 TUTOR_MODEL을 현재 사용 가능한 모델로 바꾸세요.`);
-    }
-    return fail(res.status, m);
-  }
+  if (out.errMsg) return fail(out.errStatus || 502, out.errMsg);
 
-  const text = (data.content || [])
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
+  const text = String(out.text || "")
     .replace(/^\s*```(?:json)?/i, "")
     .replace(/```\s*$/, "")
     .trim();
@@ -246,12 +320,13 @@ export default async (req) => {
     const s = text.indexOf("{"), e = text.lastIndexOf("}");
     if (s > -1 && e > s) { try { parsed = JSON.parse(text.slice(s, e + 1)); } catch {} }
   }
-  if (!parsed) return fail(502, "튜터 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
+  if (!parsed) return fail(502, "튜터 응답을 해석하지 못했습니다. 다시 시도해 주세요." + (body.task === "import" ? " (문제집이 길면 선택 페이지를 줄여 보세요.)" : ""));
 
   return new Response(JSON.stringify({
     ok: true,
+    provider: PROVIDER,
     result: parsed,
-    usage: data.usage || null
+    usage: out.usage || null
   }), { status: 200, headers: cors });
 };
 
