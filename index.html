@@ -66,6 +66,32 @@ body{
 .panel > .sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 22px}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
+/* ---------- 상단 탭 네비게이션 ---------- */
+.topnav{
+  position:sticky;top:0;z-index:20;display:flex;gap:4px;flex-wrap:wrap;
+  margin:0 0 22px;padding:8px;border:1px solid var(--rule);border-radius:3px;
+  background:rgba(232,236,242,.9);backdrop-filter:blur(8px);
+}
+.nav-tab{
+  flex:1 1 auto;padding:10px 14px;border:1px solid transparent;border-radius:2px;background:transparent;
+  font-family:var(--f-body);font-size:13.5px;color:var(--ink-soft);cursor:pointer;transition:all .12s;white-space:nowrap;
+}
+.nav-tab:hover{color:var(--ink);background:var(--card)}
+.nav-tab.on{background:var(--ink);color:var(--paper);font-weight:600}
+@media(max-width:620px){.nav-tab{flex:1 1 40%;font-size:13px;padding:9px 8px}}
+
+/* ---------- 대시보드 요약 타일 ---------- */
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.dash-tile{
+  border:1px solid var(--rule);border-radius:3px;background:var(--paper);padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.dash-tile .dl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.dash-tile .dv{font-family:var(--f-mono);font-weight:600;font-size:24px;letter-spacing:-.02em;color:var(--ink)}
+.dash-tile .dv.ok{color:var(--pass)}
+.dash-tile .dv.warn{color:var(--mark)}
+.dash-tile .dsub{font-size:11.5px;color:var(--ink-soft)}
+
 button{font:inherit;color:inherit;cursor:pointer}
 .btn{
   font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;
@@ -572,9 +598,17 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   </div>
 </header>
 
+<nav class="topnav" id="topnav">
+  <button class="nav-tab" data-view="dashboard">대시보드</button>
+  <button class="nav-tab" data-view="study">학습</button>
+  <button class="nav-tab" data-view="vocab">단어장</button>
+  <button class="nav-tab" data-view="progress">기록·목표</button>
+  <button class="nav-tab" data-view="ref">참고</button>
+</nav>
+
 <div id="storeWarn"></div>
 
-<div class="setup">
+<div class="setup" data-view="dashboard">
   <div>
     <label class="fl" for="examDate">시험 날짜</label>
     <input type="date" id="examDate">
@@ -586,8 +620,15 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   <div style="flex:0 1 auto"><button class="btn" id="resetAll">전체 초기화</button></div>
 </div>
 
+<!-- ============ 대시보드 요약 ============ -->
+<section class="panel" data-view="dashboard" id="dashPanel">
+  <h2>대시보드</h2>
+  <p class="sub">오늘의 핵심 지표입니다. 아래 <strong>학습 시작</strong>에서 바로 학습으로 들어가세요.</p>
+  <div class="dash-stats" id="dashStats"></div>
+</section>
+
 <!-- ============ SIGNATURE: BAND RULER ============ -->
-<section class="panel">
+<section class="panel" data-view="progress">
   <h2>밴드 계산기</h2>
   <p class="sub">마커를 끌어 목표를 조정하세요. 4개 영역 <strong>합계 27.0</strong>이면 평균 6.75, 공식 규칙상 <strong>Overall 7.0</strong>입니다 — 모든 영역이 7.0선 위에 있을 필요가 없습니다.</p>
 
@@ -611,7 +652,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ TODAY ============ -->
-<section class="panel">
+<section class="panel" data-view="dashboard">
   <div class="today-head">
     <h2 id="dayTitle">오늘 할 일</h2>
     <span class="wk-tag" id="wkTag">Week 1</span>
@@ -621,7 +662,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ 학습 시작 (모드 선택) ============ -->
-<section class="panel" id="launchPanel">
+<section class="panel" data-view="dashboard" id="launchPanel">
   <h2>학습 시작</h2>
   <p class="sub">두 가지 방식 중 하나를 골라 학습하세요. 어느 쪽이든 <strong>고르면 곧바로 CBT 학습 화면으로 이동</strong>합니다.</p>
   <div class="mode-tabs" id="modeTabs">
@@ -633,7 +674,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ 28-DAY GRID ============ -->
-<section class="panel">
+<section class="panel" data-view="dashboard">
   <h2>28일 진행</h2>
   <p class="sub">셀을 누르면 해당 날짜의 할 일로 이동합니다. 채워진 높이가 그날 완료율입니다.</p>
   <div class="grid28" id="dowRow"></div>
@@ -645,7 +686,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   </div>
 </section>
 
-<div class="cols">
+<div class="cols" data-view="progress">
   <!-- ============ MOCKS ============ -->
   <section class="panel">
     <h2>모의고사 기록</h2>
@@ -681,7 +722,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </div>
 
 <!-- ============ 빈출 단어장 ============ -->
-<section class="panel" id="vocabPanel">
+<section class="panel" data-view="vocab" id="vocabPanel">
   <h2>빈출 단어장</h2>
   <p class="sub">IELTS 리딩·리스닝·라이팅에 자주 나오는 <strong>학술 어휘</strong>입니다. 카드를 넘기며 아는 단어와 복습할 단어를 나누세요. 진행 상황은 이 브라우저에 저장됩니다.</p>
   <div class="voc-bar">
@@ -697,7 +738,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ 내 문제집 (PDF · ZIP) ============ -->
-<section class="panel" id="pdfPanel">
+<section class="panel" data-view="study" id="pdfPanel">
   <h2>내 문제집 (PDF · ZIP)</h2>
   <p class="sub">직접 구매·보유한 IELTS 파일을 올리면 <strong>브라우저 안에서만</strong> 읽어 실제 CBT처럼 풉니다. <strong>PDF 한 개</strong>를 올리면 그 지문을, <strong>ZIP</strong>(책 PDF + 리스닝 오디오)을 올리면 <strong>Listening·Reading·Writing·Speaking 전부</strong>를 Test별로 학습할 수 있습니다. 파일은 서버에 저장·전송되지 않고, 구조화에 필요한 텍스트만 채점 API로 보냅니다. 저작권 때문에 문제집은 앱에 포함하지 않으며 <strong>본인이 적법하게 보유한 파일만</strong> 쓰세요.</p>
 
@@ -728,7 +769,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ CBT READING ============ -->
-<section class="panel">
+<section class="panel" data-view="study">
   <h2>CBT 리딩 연습</h2>
   <p class="sub">실제 컴퓨터 시험과 같은 좌우 분할 화면입니다. 제출하면 채점 후 <strong>틀린 문항마다 AI 튜터가 함정 구조와 풀이 팁</strong>을 설명하고, 그 내용이 아래 오답노트에 자동으로 쌓입니다.</p>
 
@@ -760,7 +801,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ WRITING LAB ============ -->
-<section class="panel">
+<section class="panel" data-view="study">
   <h2>라이팅 랩</h2>
   <p class="sub">가장 점수가 안 오르는 영역이자, AI 피드백의 가치가 가장 큰 영역입니다. 4개 채점 기준별 밴드와 <strong>고쳐 쓴 문장</strong>을 받습니다.</p>
 
@@ -789,7 +830,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ SPEAKING LAB ============ -->
-<section class="panel">
+<section class="panel" data-view="study">
   <h2>스피킹 랩</h2>
   <p class="sub">먼저 <strong>소리 내어 녹음</strong>한 뒤, 들으면서 말한 그대로 옮겨 적으세요. 옮겨 적는 과정 자체가 자기 습관을 보게 만듭니다. 발음은 스크립트로 평가할 수 없어 채점에서 제외됩니다.</p>
 
@@ -814,7 +855,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ TIMER ============ -->
-<section class="panel">
+<section class="panel" data-view="study">
   <h2>실전 타이머</h2>
   <p class="sub">시험은 시간 관리 싸움입니다. 연습부터 실제 배분으로 하세요.</p>
   <div class="clock mono" id="clock">40:00</div>
@@ -827,7 +868,7 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </section>
 
 <!-- ============ REFERENCE ============ -->
-<section class="panel">
+<section class="panel" data-view="ref">
   <h2>영역별 핵심 기술</h2>
   <p class="sub">막힐 때 여는 곳. 매일 읽을 필요는 없습니다.</p>
   <div id="ref"></div>
@@ -1404,7 +1445,9 @@ function labelToSkill(label){
   if(/모의/i.test(s)) return "mock";
   return null;
 }
+var SKILL_VIEW={listening:"study",reading:"study",writing:"study",speaking:"study",vocab:"vocab",errors:"progress",mock:"progress"};
 function launchSkill(skill){
+  setView(SKILL_VIEW[skill]||"study");
   if(skill==="reading"){
     if(!CUR_TEST || CUR_TEST.kind==="listening"){
       var saved=store.get(IMPORT_KEY,null);
@@ -1444,7 +1487,7 @@ function renderLaunch(){
     body.appendChild(row);
     return;
   }
-  desc.textContent="위 ‘28일 진행’ 캘린더에서 날짜를 누르면 그날 플랜이 여기에 반영됩니다. 항목을 누르면 해당 학습으로 바로 이동합니다.";
+  desc.textContent="아래 ‘28일 진행’ 캘린더에서 날짜를 누르면 그날 플랜이 여기에 반영됩니다. 항목을 누르면 해당 학습으로 바로 이동합니다.";
   if(!S.exam){ body.innerHTML="<p class='empty'>먼저 시험 날짜를 설정하면 날짜별 학습 플랜이 나타납니다.</p>"; return; }
   var i=(S.sel==null)?todayIndex():S.sel;
   if(i==null) i=(today()<startDate())?0:27;
@@ -1460,6 +1503,66 @@ function renderLaunch(){
 Array.prototype.forEach.call(document.querySelectorAll("#modeTabs .mode-tab"),function(b){
   b.addEventListener("click",function(){ S.mode=b.dataset.mode; save(); renderLaunch(); });
 });
+
+/* ================= 뷰(탭) 전환 ================= */
+var VIEWS=["dashboard","study","vocab","progress","ref"];
+var CURRENT_VIEW="dashboard";
+function setView(v){
+  if(VIEWS.indexOf(v)<0) v="dashboard";
+  CURRENT_VIEW=v;
+  Array.prototype.forEach.call(document.querySelectorAll(".wrap > [data-view]"),function(node){
+    node.style.display = (node.getAttribute("data-view")===v) ? "" : "none";
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#topnav .nav-tab"),function(b){
+    b.classList.toggle("on", b.dataset.view===v);
+  });
+  if(v==="dashboard") renderDash();
+  if(v==="progress") renderRuler();   // 숨김 상태에서 올 때 눈금 재배치
+}
+Array.prototype.forEach.call(document.querySelectorAll("#topnav .nav-tab"),function(b){
+  b.addEventListener("click",function(){ setView(b.dataset.view); window.scrollTo(0,0); });
+});
+
+/* ================= 대시보드 요약 ================= */
+function renderDash(){
+  var box=document.getElementById("dashStats"); if(!box) return;
+  box.innerHTML="";
+  function tile(label,val,cls,sub){
+    var t=el("div","dash-tile");
+    t.appendChild(el("div","dl",label));
+    t.appendChild(el("div","dv"+(cls?" "+cls:""),val));
+    if(sub) t.appendChild(el("div","dsub",sub));
+    box.appendChild(t);
+  }
+  var ex=parseISO(S.exam);
+  if(ex){ var dd=Math.round((ex-today())/MS);
+    tile("시험까지", dd>0?("D-"+dd):(dd===0?"D-DAY":("D+"+(-dd))), (dd<=7?"warn":""), S.exam);
+  } else tile("시험까지","—","","날짜를 설정하세요");
+
+  var ov=overallOf(S.band.L,S.band.R,S.band.W,S.band.S);
+  tile("목표 Overall", ov.toFixed(1), ov>=7?"ok":"", "밴드 계산기에서 조정");
+
+  var ti=todayIndex();
+  if(ti!=null){ var rot=tasksFor(ti), n=rot.t.length, dn=0;
+    for(var j=0;j<n;j++) if(S.done[ti+"-"+j]) dn++;
+    tile("오늘 완료", dn+"/"+n, (n&&dn===n?"ok":""), (n?Math.round(dn/n*100):0)+"%");
+  } else tile("오늘 완료","—","","일정 밖");
+
+  if(S.mocks && S.mocks.length){
+    var mk=S.mocks[S.mocks.length-1], mo=overallOf(mk.l,mk.r,mk.w,mk.s);
+    tile("최근 모의", mo.toFixed(1), mo>=7?"ok":"", mk.d.slice(5));
+  } else tile("최근 모의","—","","기록 없음");
+
+  if(S.errors && S.errors.length){
+    var cc={}; CAUSES.forEach(function(c){cc[c]=0;});
+    S.errors.forEach(function(e){ if(cc[e.cause]!=null) cc[e.cause]++; });
+    var top="",mx=-1; CAUSES.forEach(function(c){ if(cc[c]>mx){mx=cc[c];top=c;} });
+    tile("1위 오답 원인", top, "warn", mx+"건 / 총 "+S.errors.length);
+  } else tile("오답노트","0","","오답을 쌓아보세요");
+
+  var kn=0; VOCAB.forEach(function(v){ if(S.vocab[v.w]==="known") kn++; });
+  tile("단어장", kn+"/"+VOCAB.length, (kn===VOCAB.length?"ok":""), "아는 단어");
+}
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
 /* ================= TIMER ================= */
@@ -2741,6 +2844,7 @@ buildRuler(); buildPresets(); buildRef();
 buildPassage(); buildQuestions(); rClock(); renderTestBadge(); renderPdfSaved(); loadWriting(); loadSpeak();
 renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors(); renderClock();
 renderLaunch(); renderVocab();
+setView("dashboard");
 window.addEventListener("resize",renderRuler);
 })();
 </script>
