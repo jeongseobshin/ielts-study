@@ -38,6 +38,47 @@ const SHAPE = `
 - 칭찬을 위한 칭찬을 하지 않는다. 점수를 실제보다 후하게 주지 않는다.
 `.trim();
 
+/* ---------- PDF → CBT 구조화 프롬프트 ---------- */
+const IMPORT_SYS = `
+너는 IELTS Academic Reading 시험지 텍스트를 컴퓨터 시험(CBT) 데이터로 변환하는 파서다.
+입력은 사용자가 소유한 PDF 문제집에서 추출한 원문 텍스트다(지문 1개 + 그에 딸린 문제들, 그리고 있다면 정답 키).
+너의 임무는 이 텍스트를 아래 JSON 스키마로 정확히 옮기는 것이다. 새 문제를 창작하지 말고, 원문에 있는 것만 옮긴다.
+
+반드시 아래 JSON 객체 **하나만** 출력한다. 마크다운 코드펜스, 설명, 인사말을 절대 붙이지 않는다.
+
+{
+  "title": "지문 제목(원문에 있으면 그대로, 없으면 첫 문장에서 짧게 지어낸 제목)",
+  "src": "출처 한 줄. 예: 사용자 제공 PDF · Reading Passage 1",
+  "paras": [["A","문단 원문 전체"], ["B","문단 원문 전체"]],
+  "headings": ["i. 보기 문구", "ii. 보기 문구"],
+  "groups": [
+    {"g":"Questions 1-6", "gi":"문제 지시문 원문", "type":"heading",
+     "qs":[{"n":1,"q":"Paragraph A","a":"iv","ev":"A"}]},
+    {"g":"Questions 7-10", "gi":"지시문", "type":"tfng",
+     "qs":[{"n":7,"q":"진술문 원문","a":"FALSE","ev":"C"}]},
+    {"g":"Questions 11-13", "gi":"지시문", "type":"mcq",
+     "qs":[{"n":11,"q":"질문 원문","opts":["A. 보기","B. 보기","C. 보기","D. 보기"],"a":"C. 보기","ev":"D"}]},
+    {"g":"Questions 14-16", "gi":"지시문", "type":"gap", "summary":"__14__ 가 들어간 요약문(있을 때만)",
+     "qs":[{"n":14,"q":"Gap 14","a":"정답단어","ev":"E"}]}
+  ]
+}
+
+규칙:
+- "paras": 지문을 문단 단위로 나눈다. 원문에 A/B/C… 문단 라벨이 있으면 그 라벨을 쓰고, 없으면 "A","B","C"… 순서로 직접 매긴다. 문단 본문은 요약하지 말고 원문 그대로 옮긴다.
+- "headings": Matching Headings 문제가 있을 때만 그 보기 목록을 넣는다. 없으면 빈 배열 [].
+- "type"은 반드시 다음 중 하나: heading / tfng / ynng / mcq / gap
+    · heading = 문단에 소제목 매칭. "a"는 로마숫자(i, ii, …), "q"는 "Paragraph A" 형식.
+    · tfng = True / False / Not Given. "a"는 정확히 "TRUE" / "FALSE" / "NOT GIVEN" 중 하나.
+    · ynng = Yes / No / Not Given. "a"는 정확히 "YES" / "NO" / "NOT GIVEN" 중 하나.
+    · mcq = 객관식. "opts"에 보기 전체를 넣고, "a"는 정답 보기 문자열을 opts 중 하나와 **완전히 동일하게** 넣는다.
+    · gap = 빈칸/문장완성/요약완성/단답. 요약문이 하나로 이어지면 그룹에 "summary"를 넣고 각 "q"는 "Gap N". 개별 문장완성이면 "summary"를 생략하고 "q"에 문항 원문을 넣는다. "a"는 정답 단어(들). 허용 답이 여러 개면 "word1|word2"처럼 세로줄로 구분한다.
+- "a"(정답): 입력 텍스트에 정답 키가 포함되어 있으면 반드시 그 정답을 쓴다. 정답 키가 없으면 지문 근거로 직접 풀어서 채운다. 추측이면 그래도 가장 근거 있는 답을 하나 고른다.
+- "ev": 정답의 근거가 되는 문단 라벨(paras의 라벨과 일치). 모르면 첫 문단 라벨을 쓴다.
+- "n"(문항 번호): 원문 번호를 그대로 쓴다. 전체에서 유일해야 한다.
+- 지문·문제·보기의 영어 원문은 번역하거나 바꾸지 말고 그대로 둔다.
+- 텍스트가 IELTS Reading 지문·문제 형식이 아니거나 문제를 하나도 찾을 수 없으면, 다음만 출력한다: {"error":"이 텍스트에서 Reading 문제를 찾지 못했습니다. 지문과 문제(가능하면 정답 페이지)가 함께 포함된 페이지를 선택했는지 확인하세요."}
+`.trim();
+
 /* ---------- 태스크별 시스템 프롬프트 ---------- */
 const SYSTEMS = {
   writing: `
@@ -84,7 +125,9 @@ ${SHAPE}`,
 - "tips"에는 다음 답변에서 바로 쓸 수 있는 확장 표현틀을 포함한다.
 - 문어체로 고쳐주지 않는다. Speaking은 자연스러운 구어가 정답이다.
 
-${SHAPE}`
+${SHAPE}`,
+
+  import: IMPORT_SYS
 };
 
 /* ---------- 사용자 메시지 조립 ---------- */
@@ -117,6 +160,10 @@ function buildUserMessage(task, p) {
       `[질문/큐카드]\n${clip(p.cue, 800)}`,
       `[응시자 스크립트]\n${clip(p.transcript, 6000)}`
     ].join("\n\n");
+  }
+
+  if (task === "import") {
+    return `아래는 PDF 문제집에서 추출한 원문 텍스트다. 위 스키마대로 변환하라.\n\n[추출 텍스트]\n${clip(p.text, 45000)}`;
   }
   return null;
 }
@@ -163,8 +210,8 @@ export default async (req) => {
       },
       body: JSON.stringify({
         model: process.env.TUTOR_MODEL || "claude-sonnet-5",
-        max_tokens: body.task === "reading" ? 1200 : 2500,
-        temperature: 0.2,
+        max_tokens: body.task === "import" ? 8000 : body.task === "reading" ? 1200 : 2500,
+        temperature: body.task === "import" ? 0 : 0.2,
         system,
         messages: [{ role: "user", content: userMsg }]
       })
