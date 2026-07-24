@@ -360,6 +360,55 @@ details .body strong{color:var(--ink)}
 .score-strip .big{font-family:var(--f-mono);font-weight:600;font-size:26px;letter-spacing:-.02em}
 .score-strip .big.ok{color:var(--pass)}
 
+/* wide option buttons for MCQ */
+.opts.col{flex-direction:column;align-items:stretch}
+.opt.wide{
+  display:block;width:100%;text-align:left;white-space:normal;line-height:1.55;
+  font-family:var(--f-body);font-size:13.5px;letter-spacing:0;padding:9px 12px;
+}
+
+/* imported-test badge on the CBT panel */
+.test-badge{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-8px 0 20px;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;color:var(--ink-soft);
+}
+.test-badge .tag{
+  border:1px solid var(--rule);border-radius:2px;padding:3px 8px;color:var(--ink);
+  text-transform:uppercase;letter-spacing:.1em;
+}
+.test-badge .tag.mine{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.test-badge .nm{color:var(--ink);font-family:var(--f-body);font-size:13px;letter-spacing:0}
+.test-badge .lnk{
+  border:0;background:none;color:var(--mark);font-family:var(--f-mono);font-size:11px;
+  cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;
+}
+
+/* ---------- PDF import ---------- */
+.pdf-drop{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:8px}
+.pdf-hint{font-size:12.5px;color:var(--ink-soft);flex:1 1 240px;line-height:1.55}
+.pdf-pages{
+  display:flex;flex-wrap:wrap;gap:5px;margin:14px 0 4px;
+  max-height:150px;overflow-y:auto;padding:2px;
+}
+.pdf-pages .pg{
+  min-width:34px;height:30px;border:1px solid var(--rule);border-radius:2px;background:var(--card);
+  font-family:var(--f-mono);font-size:11.5px;color:var(--ink-soft);padding:0 6px;cursor:pointer;
+}
+.pdf-pages .pg.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pdf-pages .pg.empty{opacity:.4;text-decoration:line-through}
+.pdf-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.pdf-sel{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-soft)}
+.pdf-text{
+  margin-top:14px;border:1px solid var(--rule);border-radius:2px;background:var(--paper);
+  padding:14px 16px;max-height:340px;overflow-y:auto;
+  font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;
+}
+.pdf-saved{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px;
+  border-top:1px solid var(--rule);padding-top:14px;font-size:13px;color:var(--ink-soft);
+}
+.pdf-saved .nm{color:var(--ink);font-weight:500}
+
 /* ---------- writing lab ---------- */
 .wl-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
 .prompt-box{
@@ -526,9 +575,36 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 </div>
 
 <!-- ============ CBT READING ============ -->
+<!-- ============ PDF 문제집 (내 파일) ============ -->
+<section class="panel" id="pdfPanel">
+  <h2>내 문제집 (PDF)</h2>
+  <p class="sub">직접 구매·보유한 IELTS PDF(예: 케임브리지 공식 기출 17·18·19·20·21)를 올리면 <strong>브라우저 안에서만</strong> 텍스트를 읽어 실제 CBT처럼 풀 수 있습니다. 파일은 서버에 저장·전송되지 않습니다. 저작권 때문에 문제집 자체는 앱에 포함하지 않으며, <strong>본인이 적법하게 보유한 파일만</strong> 사용하세요.</p>
+
+  <div class="pdf-drop">
+    <input type="file" id="pdfFile" accept="application/pdf" hidden>
+    <button class="btn solid" id="pdfPick">PDF 파일 선택</button>
+    <span class="pdf-hint" id="pdfHint">Reading 지문 <strong>1개 + 그 문제</strong>가 담긴 페이지를 고르세요. 정답 페이지까지 함께 선택하면 채점이 정확해집니다.</span>
+  </div>
+  <div class="tutor-state" id="pdfState"></div>
+
+  <div id="pdfPages" class="pdf-pages" hidden></div>
+
+  <div class="pdf-actions" id="pdfActions" hidden>
+    <span class="pdf-sel" id="pdfSel">선택된 페이지 0쪽</span>
+    <button class="btn" id="pdfPreview">선택 페이지 원문 보기</button>
+    <button class="btn solid" id="pdfConvert">선택 페이지 → AI로 CBT 변환</button>
+  </div>
+  <div class="pdf-text" id="pdfText" hidden></div>
+
+  <div class="pdf-saved" id="pdfSaved" hidden></div>
+</section>
+
+<!-- ============ CBT READING ============ -->
 <section class="panel">
   <h2>CBT 리딩 연습</h2>
   <p class="sub">실제 컴퓨터 시험과 같은 좌우 분할 화면입니다. 제출하면 채점 후 <strong>틀린 문항마다 AI 튜터가 함정 구조와 풀이 팁</strong>을 설명하고, 그 내용이 아래 오답노트에 자동으로 쌓입니다.</p>
+
+  <div class="test-badge" id="rTestBadge"></div>
 
   <div class="cbt-bar">
     <span class="lb">남은 시간</span>
@@ -1197,7 +1273,8 @@ var CLIENT_SHAPE =
 var CLIENT_SYS = {
  writing:"너는 IELTS Writing 공식 Band Descriptors에 정통한 채점관이다. 응시자는 6.0~6.5이며 한 달 뒤 7.0이 목표다. Task Response, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy를 각각 0.5 단위로 채점하고 overall은 평균을 0.5 단위로 반올림한다. 망설여지면 낮은 쪽을 준다. 단어 수 미달(Task1 150 / Task2 250)이면 Task Response에서 감점하고 verdict에 명시한다. fixes는 3~5개, 사소한 오타보다 반복되는 구조적 문제를 우선한다. after는 응시자가 실제로 쓸 수 있는 수준으로 고친다. 암기 템플릿 표현은 반드시 지적한다.\n"+CLIENT_SHAPE,
  reading:"너는 IELTS Reading 함정 구조를 가르치는 튜터다. bands는 빈 배열, overall은 null로 둔다. verdict는 왜 오답인지 한 문장으로, 정답 근거가 지문 어디인지 짚는다. fixes의 before에는 응시자가 고른 답, after에는 정답과 근거를 넣는다. tips는 이 문제 유형에서 통하는 전략 1~2개. True/False/Not Given이면 False(지문이 반대로 말함)와 Not Given(언급 자체가 없음)의 차이를 이 문항에 빗대어 설명한다. 응시자가 지문 대신 상식으로 판단했으면 지적한다. 지문을 길게 옮겨 적지 않는다.\n"+CLIENT_SHAPE,
- speaking:"너는 IELTS Speaking 시험관이다. 스크립트에는 발음 정보가 없으므로 Pronunciation은 채점하지 않는다. bands는 Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy 3개만. overall은 그 평균이며 발음 미반영 추정치임을 verdict에 밝힌다. Part 2는 220단어 미만이면 2분에 미달함을 지적한다. 반복 표현, 지나치게 짧은 답변, 주제 이탈을 우선 지적한다. 문어체로 고쳐주지 않는다.\n"+CLIENT_SHAPE
+ speaking:"너는 IELTS Speaking 시험관이다. 스크립트에는 발음 정보가 없으므로 Pronunciation은 채점하지 않는다. bands는 Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy 3개만. overall은 그 평균이며 발음 미반영 추정치임을 verdict에 밝힌다. Part 2는 220단어 미만이면 2분에 미달함을 지적한다. 반복 표현, 지나치게 짧은 답변, 주제 이탈을 우선 지적한다. 문어체로 고쳐주지 않는다.\n"+CLIENT_SHAPE,
+ "import":"너는 IELTS Academic Reading 시험지 텍스트를 CBT 데이터로 변환하는 파서다. 아래 JSON 하나만 출력하고 코드펜스·설명을 붙이지 않는다. 스키마: {\"title\":\"\",\"src\":\"\",\"paras\":[[\"A\",\"문단 원문\"]],\"headings\":[\"i. ...\"],\"groups\":[{\"g\":\"Questions 1-6\",\"gi\":\"지시문\",\"type\":\"heading|tfng|ynng|mcq|gap\",\"summary\":\"gap 요약문(선택)\",\"qs\":[{\"n\":1,\"q\":\"문항 원문\",\"opts\":[\"A. ..\",\"B. ..\"],\"a\":\"정답\",\"ev\":\"근거 문단 라벨\"}]}]}. 규칙: 새 문제를 창작하지 말고 원문에 있는 것만 옮긴다. 지문 문단 본문은 요약하지 말고 원문 그대로. type은 heading/tfng/ynng/mcq/gap 중 하나. tfng의 a는 TRUE/FALSE/NOT GIVEN, ynng는 YES/NO/NOT GIVEN, heading은 로마숫자, mcq는 opts 중 하나와 완전히 동일한 문자열. 정답 키가 텍스트에 있으면 그 정답을, 없으면 지문 근거로 직접 푼다. 허용 답이 여럿이면 a를 \"word1|word2\"로. Reading 형식이 아니면 {\"error\":\"이 텍스트에서 Reading 문제를 찾지 못했습니다.\"}만 출력한다. 영어 원문은 번역하지 않는다."
 };
 
 function wordCount(s){ return String(s||"").trim().split(/\s+/).filter(Boolean).length; }
@@ -1209,6 +1286,7 @@ function clientUserMsg(task,p){
   if(task==="reading") return "[문제 유형] "+p.qtype+"\n[문항] "+p.question+
     (p.choices?"\n[선택지] "+p.choices:"")+"\n[응시자 답] "+(p.userAnswer||"(무응답)")+
     "\n[정답] "+p.correctAnswer+"\n[지문 근거 부분]\n"+p.evidence;
+  if(task==="import") return "아래는 PDF 문제집에서 추출한 원문 텍스트다. 위 스키마대로 변환하라.\n\n[추출 텍스트]\n"+String(p.text||"").slice(0,45000);
   return "[Part "+p.part+"]\n[질문/큐카드]\n"+p.cue+"\n\n[응시자 스크립트]\n"+p.transcript;
 }
 
@@ -1240,7 +1318,7 @@ function askTutor(task,payload){
     return fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:1000,
+        model:"claude-sonnet-4-6",max_tokens:task==="import"?8000:1000,
         system:CLIENT_SYS[task],
         messages:[{role:"user",content:clientUserMsg(task,payload)}]
       })
@@ -1337,7 +1415,43 @@ function errState(stateEl,msg){ stateEl.className="tutor-state err"; stateEl.tex
 
 /* ================= CBT READING ================= */
 var R={ans:{},graded:false,left:1200,id:null};
-var FLAT=[]; QUESTIONS.forEach(function(g){ g.qs.forEach(function(q){ FLAT.push({q:q,g:g}); }); });
+var ROMAN=["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii","xiii","xiv","xv"];
+var SAMPLE_TEST={passage:PASSAGE,headings:HEADINGS,questions:QUESTIONS,sample:true};
+var CUR_TEST=SAMPLE_TEST;
+var FLAT=[];
+function rebuildFlat(){ FLAT=[]; QUESTIONS.forEach(function(g){ g.qs.forEach(function(q){ FLAT.push({q:q,g:g}); }); }); }
+rebuildFlat();
+
+/* imported test를 CBT 엔진에 태운다 */
+function loadTest(t){
+  CUR_TEST=t;
+  PASSAGE=t.passage; HEADINGS=t.headings||[]; QUESTIONS=t.questions||[];
+  rebuildFlat();
+  rStop(); R={ans:{},graded:false,left:1200,id:null};
+  document.getElementById("rFeedback").innerHTML="";
+  document.getElementById("rState").innerHTML="";
+  document.getElementById("rScore").textContent="— / "+FLAT.length;
+  var b=document.getElementById("rBand"); b.textContent="—"; b.className="big mono";
+  document.getElementById("rMsg").textContent="시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
+  buildPassage(); buildQuestions(); rClock(); renderTestBadge();
+}
+
+function renderTestBadge(){
+  var el0=document.getElementById("rTestBadge"); el0.innerHTML="";
+  if(CUR_TEST.sample){
+    el0.appendChild(el("span","tag","샘플 지문"));
+    el0.appendChild(el("span","nm",PASSAGE.title));
+    var note=el("span",null,"— 위 “내 문제집(PDF)”에서 본인 기출을 올려 풀 수도 있습니다");
+    note.style.fontSize="11px"; el0.appendChild(note);
+  } else {
+    el0.appendChild(el("span","tag mine","내 문제집"));
+    el0.appendChild(el("span","nm",PASSAGE.title||"업로드한 지문"));
+    el0.appendChild(el("span",null,FLAT.length+"문항"));
+    var back=el("button","lnk","샘플 지문으로 되돌리기");
+    back.addEventListener("click",function(){ loadTest(SAMPLE_TEST); });
+    el0.appendChild(back);
+  }
+}
 
 function paraText(letter){
   for(var i=0;i<PASSAGE.paras.length;i++) if(PASSAGE.paras[i][0]===letter) return PASSAGE.paras[i][1];
@@ -1368,7 +1482,7 @@ function buildQuestions(){
       HEADINGS.forEach(function(h){ var r=el("div",null,h); r.style.marginBottom="3px"; lst.appendChild(r); });
       wrap.appendChild(lst);
     }
-    if(g.type==="gap"){
+    if(g.type==="gap" && g.summary){
       var s=el("div","gi"); s.style.color="var(--ink)"; s.style.lineHeight="1.9"; s.textContent=g.summary;
       wrap.appendChild(s);
     }
@@ -1379,12 +1493,15 @@ function buildQuestions(){
       qt.appendChild(el("span",null,q.q));
       it.appendChild(qt);
 
-      if(g.type==="heading"||g.type==="tfng"){
-        var opts=el("div","opts");
+      var isChoice = g.type==="heading"||g.type==="tfng"||g.type==="ynng"||g.type==="mcq";
+      if(isChoice){
+        var opts=el("div","opts"+(g.type==="mcq"?" col":""));
         var choices = g.type==="tfng" ? ["TRUE","FALSE","NOT GIVEN"]
-                    : ["i","ii","iii","iv","v","vi","vii","viii","ix"];
+                    : g.type==="ynng" ? ["YES","NO","NOT GIVEN"]
+                    : g.type==="mcq"  ? (Array.isArray(q.opts)?q.opts:[])
+                    : ROMAN.slice(0, Math.max(HEADINGS.length,1));
         choices.forEach(function(c){
-          var b=el("button","opt",c);
+          var b=el("button","opt"+(g.type==="mcq"?" wide":""),c);
           b.addEventListener("click",function(){
             if(R.graded) return;
             R.ans[q.n]=c; renderPicks(); renderNav();
@@ -1428,7 +1545,14 @@ function renderNav(){
   });
 }
 function norm(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
-function isRight(q){ return norm(R.ans[q.n])===norm(q.a); }
+function isRight(q){
+  var ans=norm(R.ans[q.n]);
+  if(ans==="") return false;
+  var acc=String(q.a==null?"":q.a).split("|");
+  for(var i=0;i<acc.length;i++){ if(norm(acc[i])===ans) return true; }
+  return false;
+}
+function ansText(q){ return String(q.a==null?"":q.a).split("|").join(" / "); }
 
 function rTick(){
   R.left--;
@@ -1463,7 +1587,7 @@ function gradeReading(auto){
     if(!ok){
       var ln=el("div","ansline");
       ln.appendChild(document.createTextNode("내 답 "+(R.ans[f.q.n]||"(무응답)")+"  ·  정답 "));
-      ln.appendChild(el("b",null,f.q.a));
+      ln.appendChild(el("b",null,ansText(f.q)));
       it.appendChild(ln);
     }
   });
@@ -1474,7 +1598,11 @@ function gradeReading(auto){
   bEl.textContent=band.toFixed(1); bEl.className="big mono"+(band>=7.5?" ok":"");
   document.getElementById("rMsg").innerHTML =
     (auto?"<strong>시간 종료로 자동 제출되었습니다.</strong> ":"")+
-    "13문항 표본 환산이라 참고치입니다. 실제 밴드는 40문항 기준으로만 의미가 있습니다."+
+    (CUR_TEST.sample
+      ? "13문항 표본 환산이라 참고치입니다. 실제 밴드는 40문항 기준으로만 의미가 있습니다."
+      : (FLAT.length>=38
+          ? "40문항 기준 환산 밴드입니다."
+          : FLAT.length+"문항 기준 환산이라 참고치입니다. 40문항 풀세트라야 밴드가 정확합니다."))+
     (c<FLAT.length?" 아래에서 틀린 문항의 튜터 해설을 받으세요.":" 전부 맞혔습니다.");
   renderNav();
 
@@ -1490,18 +1618,25 @@ function explainWrong(){
     if(i>=wrong.length){ busy(st,false); return; }
     var f=wrong[i];
     busy(st,true,"튜터가 "+f.q.n+"번을 분석 중입니다… ("+(i+1)+"/"+wrong.length+")");
+    var TLABEL={heading:"Matching Headings",tfng:"True/False/Not Given",ynng:"Yes/No/Not Given",mcq:"Multiple Choice",gap:"Summary/Sentence Completion"};
+    var tlabel=TLABEL[f.g.type]||f.g.type;
     var choices = f.g.type==="tfng" ? "TRUE / FALSE / NOT GIVEN"
-                : f.g.type==="heading" ? HEADINGS.join(" | ") : "";
+                : f.g.type==="ynng" ? "YES / NO / NOT GIVEN"
+                : f.g.type==="heading" ? HEADINGS.join(" | ")
+                : f.g.type==="mcq" ? (Array.isArray(f.q.opts)?f.q.opts.join(" | "):"") : "";
+    var evTxt=paraText(f.q.ev);
+    var evidence = evTxt ? ("Paragraph "+f.q.ev+": "+evTxt)
+                 : PASSAGE.paras.map(function(p){return p[0]+": "+p[1];}).join("\n").slice(0,2600);
     askTutor("reading",{
-      qtype: f.g.type==="tfng"?"True/False/Not Given":f.g.type==="heading"?"Matching Headings":"Summary Completion (ONE WORD ONLY)",
-      question: f.q.q + (f.g.type==="gap" ? "  ← 요약문: "+f.g.summary : ""),
+      qtype: tlabel,
+      question: f.q.q + (f.g.type==="gap" && f.g.summary ? "  ← 요약문: "+f.g.summary : ""),
       choices: choices,
       userAnswer: R.ans[f.q.n]||"",
-      correctAnswer: f.q.a,
-      evidence: "Paragraph "+f.q.ev+": "+paraText(f.q.ev)
+      correctAnswer: ansText(f.q),
+      evidence: evidence
     }).then(function(res){
       var sub=el("div"); box.appendChild(sub);
-      var h=el("div","fixh","문항 "+f.q.n+" — "+(f.g.type==="tfng"?"True/False/Not Given":f.g.type==="heading"?"Matching Headings":"Summary Completion"));
+      var h=el("div","fixh","문항 "+f.q.n+" — "+tlabel);
       h.style.marginTop=i===0?"6px":"26px";
       box.insertBefore(h,sub);
       renderFeedback(sub,res,"Reading");
@@ -1524,11 +1659,198 @@ document.getElementById("rReset").addEventListener("click",function(){
   rStop(); R={ans:{},graded:false,left:1200,id:null};
   document.getElementById("rFeedback").innerHTML="";
   document.getElementById("rState").innerHTML="";
-  document.getElementById("rScore").textContent="— / 13";
+  document.getElementById("rScore").textContent="— / "+FLAT.length;
   var b=document.getElementById("rBand"); b.textContent="—"; b.className="big mono";
   document.getElementById("rMsg").textContent="시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
   buildQuestions(); rClock();
 });
+
+/* ================= PDF 문제집 (내 파일) ================= */
+var PDFJS_URL="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs";
+var PDFJS_WORKER="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.mjs";
+var IMPORT_KEY="ielts7-import-v1";
+var _pdfjs=null, PDFPAGES=[], PDFSEL=null;
+
+function loadPdfjs(){
+  if(_pdfjs) return Promise.resolve(_pdfjs);
+  return import(PDFJS_URL).then(function(m){
+    try{ m.GlobalWorkerOptions.workerSrc=PDFJS_WORKER; }catch(e){}
+    _pdfjs=m; return m;
+  });
+}
+
+function pdfMsg(msg,isErr){
+  var st=document.getElementById("pdfState");
+  if(!msg){ st.className="tutor-state"; st.innerHTML=""; return; }
+  if(isErr){ st.className="tutor-state err"; st.textContent=msg; }
+  else{ st.className="tutor-state"; st.innerHTML="<span class='spin'></span>"+msg; }
+}
+function pdfDone(msg){
+  var st=document.getElementById("pdfState");
+  st.className="tutor-state"; st.textContent=msg;
+}
+
+function pageText(tc){
+  var out="";
+  (tc.items||[]).forEach(function(it){
+    out += (it.str||"") + (it.hasEOL ? "\n" : " ");
+  });
+  return out.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").replace(/[ \t]{2,}/g," ").trim();
+}
+
+function extractPdf(file){
+  var pdfjs;
+  return loadPdfjs()
+    .then(function(lib){ pdfjs=lib; return file.arrayBuffer(); })
+    .then(function(buf){ return pdfjs.getDocument({data:buf}).promise; })
+    .then(function(doc){
+      var pages=[], chain=Promise.resolve();
+      for(var i=1;i<=doc.numPages;i++){ (function(n){
+        chain=chain.then(function(){ return doc.getPage(n); })
+          .then(function(pg){ return pg.getTextContent(); })
+          .then(function(tc){
+            pages.push(pageText(tc));
+            pdfMsg("PDF 읽는 중… "+n+"/"+doc.numPages+" 페이지");
+          });
+      })(i); }
+      return chain.then(function(){ return pages; });
+    });
+}
+
+function renderPdfPages(){
+  var box=document.getElementById("pdfPages"); box.innerHTML="";
+  PDFPAGES.forEach(function(txt,idx){
+    var b=el("button","pg"+(PDFSEL.has(idx)?" on":"")+(txt?"":" empty"),String(idx+1));
+    b.title = txt ? txt.slice(0,140).replace(/\s+/g," ")+"…" : "(텍스트 없음 — 스캔 이미지일 수 있음)";
+    b.addEventListener("click",function(){
+      if(PDFSEL.has(idx)) PDFSEL.delete(idx); else PDFSEL.add(idx);
+      renderPdfPages(); updatePdfSel();
+    });
+    box.appendChild(b);
+  });
+  box.hidden=false;
+  document.getElementById("pdfActions").hidden=false;
+}
+
+function selectedText(){
+  var idxs=Array.from(PDFSEL).sort(function(a,b){return a-b;});
+  if(!idxs.length) idxs=PDFPAGES.map(function(_,i){return i;});
+  return idxs.map(function(i){return PDFPAGES[i]||"";}).filter(Boolean).join("\n\n");
+}
+function updatePdfSel(){
+  var n=PDFSEL.size || PDFPAGES.length;
+  var chars=selectedText().length;
+  var warn = chars>45000 ? " · 너무 김, 페이지를 줄이세요" : "";
+  document.getElementById("pdfSel").textContent="선택된 페이지 "+n+"쪽 · 약 "+chars.toLocaleString()+"자"+warn;
+}
+
+function importToTest(res){
+  if(!res || res.error) throw new Error(res && res.error ? res.error : "변환 결과가 비어 있습니다.");
+  var paras=(Array.isArray(res.paras)?res.paras:[])
+    .filter(function(p){return Array.isArray(p)&&p.length>=2&&String(p[1]).trim();})
+    .map(function(p){return [String(p[0]||"").trim()||"·", String(p[1])];});
+  var TYPES=["heading","tfng","ynng","mcq","gap"];
+  var groups=(Array.isArray(res.groups)?res.groups:[]).map(function(g){
+    var type=TYPES.indexOf(g.type)>-1?g.type:"gap";
+    var qs=(Array.isArray(g.qs)?g.qs:[]).map(function(q){
+      var o={ n:q.n, q:String(q.q==null?("문항 "+q.n):q.q),
+              a:String(q.a==null?"":q.a),
+              ev:String(q.ev||(paras[0]?paras[0][0]:"")) };
+      if(Array.isArray(q.opts)&&q.opts.length) o.opts=q.opts.map(String);
+      return o;
+    }).filter(function(q){ return q.n!=null && String(q.n)!==""; });
+    var out={ g:String(g.g||""), gi:String(g.gi||""), type:type, qs:qs };
+    if(g.summary) out.summary=String(g.summary);
+    return out;
+  }).filter(function(g){ return g.qs.length; });
+
+  if(!paras.length) throw new Error("지문 문단을 추출하지 못했습니다. 지문이 포함된 페이지를 선택했는지 확인하세요.");
+  if(!groups.length) throw new Error("문제를 추출하지 못했습니다. 문제(가능하면 정답)가 포함된 페이지를 선택했는지 확인하세요.");
+
+  return {
+    passage:{ title:String(res.title||"내 문제집"), src:String(res.src||"사용자 제공 PDF"), paras:paras },
+    headings:(Array.isArray(res.headings)?res.headings.map(String):[]),
+    questions:groups, sample:false, imported:true
+  };
+}
+
+function activateImported(test){
+  store.set(IMPORT_KEY,test);
+  loadTest(test);
+  renderPdfSaved();
+  pdfDone("변환 완료 — 아래 “CBT 리딩 연습”에서 "+(test.questions.reduce(function(a,g){return a+g.qs.length;},0))+"문항을 풀어보세요.");
+  var cbt=Array.prototype.filter.call(document.querySelectorAll("section.panel h2"),function(h){return /CBT 리딩/.test(h.textContent);})[0];
+  if(cbt) cbt.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function convertSelected(){
+  var text=selectedText();
+  if(!text){ pdfMsg("선택한 페이지에 텍스트가 없습니다. 스캔본(이미지) PDF라면 OCR로 텍스트를 넣은 파일이 필요합니다.",true); return; }
+  pdfMsg("AI가 지문·문제·정답을 구조화하는 중입니다… (10~40초)");
+  askTutor("import",{text:text}).then(function(res){
+    var test;
+    try{ test=importToTest(res); }
+    catch(e){ pdfMsg(e.message,true); return; }
+    activateImported(test);
+  }).catch(function(e){
+    pdfMsg((e&&e.message)||"변환에 실패했습니다. 잠시 후 다시 시도하세요.",true);
+  });
+}
+
+function renderPdfSaved(){
+  var bar=document.getElementById("pdfSaved");
+  var saved=store.get(IMPORT_KEY,null);
+  bar.innerHTML="";
+  if(!saved || !saved.passage){ bar.hidden=true; return; }
+  bar.hidden=false;
+  bar.appendChild(document.createTextNode("저장된 내 문제집 "));
+  bar.appendChild(el("span","nm",saved.passage.title||"업로드한 지문"));
+  var load=el("button","btn","불러오기");
+  load.addEventListener("click",function(){ loadTest(saved);
+    var cbt=Array.prototype.filter.call(document.querySelectorAll("section.panel h2"),function(h){return /CBT 리딩/.test(h.textContent);})[0];
+    if(cbt) cbt.scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  var del=el("button","btn","삭제");
+  del.addEventListener("click",function(){
+    try{ if(store.persistent) window.localStorage.removeItem(IMPORT_KEY); }catch(e){}
+    store.set(IMPORT_KEY,null);
+    if(!CUR_TEST.sample) loadTest(SAMPLE_TEST);
+    renderPdfSaved();
+  });
+  bar.appendChild(load); bar.appendChild(del);
+}
+
+document.getElementById("pdfPick").addEventListener("click",function(){
+  document.getElementById("pdfFile").click();
+});
+document.getElementById("pdfFile").addEventListener("change",function(){
+  var file=this.files&&this.files[0]; if(!file) return;
+  document.getElementById("pdfText").hidden=true;
+  document.getElementById("pdfPages").hidden=true;
+  document.getElementById("pdfActions").hidden=true;
+  PDFPAGES=[]; PDFSEL=new Set();
+  pdfMsg("PDF를 여는 중입니다…");
+  extractPdf(file).then(function(pages){
+    PDFPAGES=pages;
+    var withText=pages.filter(Boolean).length;
+    if(!withText){ pdfMsg("이 PDF에서 텍스트를 찾지 못했습니다. 스캔본(이미지) PDF일 수 있습니다 — OCR로 텍스트가 들어간 파일을 사용하세요.",true); return; }
+    // 기본 선택: 페이지가 적으면 전체, 많으면 사용자가 직접 고르게
+    if(pages.length<=8) pages.forEach(function(t,i){ if(t) PDFSEL.add(i); });
+    renderPdfPages(); updatePdfSel();
+    pdfDone(pages.length+"페이지에서 텍스트를 읽었습니다. 지문·문제(·정답) 페이지를 고른 뒤 변환하세요.");
+  }).catch(function(e){
+    var m=(e&&e.message)||String(e);
+    pdfMsg("PDF를 읽지 못했습니다: "+m+" (오프라인이면 인터넷 연결 후 다시 시도하세요)",true);
+  });
+  this.value="";
+});
+document.getElementById("pdfPreview").addEventListener("click",function(){
+  var box=document.getElementById("pdfText");
+  if(!box.hidden){ box.hidden=true; this.textContent="선택 페이지 원문 보기"; return; }
+  box.textContent=selectedText() || "(선택한 페이지에 텍스트가 없습니다)";
+  box.hidden=false; this.textContent="원문 숨기기";
+});
+document.getElementById("pdfConvert").addEventListener("click",convertSelected);
 
 /* ================= CHART RENDERER ================= */
 var PAL=["#16213A","#D6285A","#0F7A6B"];
@@ -1752,7 +2074,7 @@ if(!store.persistent){
 
 document.getElementById("mDate").value=fmtISO(today());
 buildRuler(); buildPresets(); buildRef();
-buildPassage(); buildQuestions(); rClock(); loadWriting(); loadSpeak();
+buildPassage(); buildQuestions(); rClock(); renderTestBadge(); renderPdfSaved(); loadWriting(); loadSpeak();
 renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors(); renderClock();
 window.addEventListener("resize",renderRuler);
 })();
