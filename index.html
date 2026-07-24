@@ -57,6 +57,12 @@ table{max-width:100%}
 }
 /* sticky 네비에 제목이 가리지 않도록 스크롤 여백 */
 section.panel,.setup{scroll-margin-top:74px}
+/* 연습 지문 선택 바 */
+.rpick-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 16px}
+.rpick-bar label{margin:0;flex:0 0 auto}
+.rpick-bar select{flex:1 1 200px;max-width:360px;min-height:38px}
+.rpick-bar #drillBtn{flex:0 0 auto}
+
 /* 최소 터치 타깃 — 터치 기기에서 작은 버튼도 누르기 쉽게 */
 .opt,.fb-opt,.voc-fbtn,.pdf-pages .pg{min-height:34px}
 @media(pointer:coarse){
@@ -792,8 +798,9 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
   <!-- ============ ERRORS ============ -->
   <section class="panel">
     <h2>오답 원인 분포</h2>
-    <p class="sub">이 화면의 목적은 오답 자체가 아니라 <strong>원인의 비율</strong>입니다. 어휘가 1위면 단어를, 시간이 1위면 푸는 순서를 고치세요.</p>
+    <p class="sub">이 화면의 목적은 오답 자체가 아니라 <strong>원인의 비율</strong>입니다. 어휘가 1위면 단어를, 시간이 1위면 푸는 순서를 고치세요. 아래 버튼으로 <strong>가장 많이 틀린 원인을 겨냥한 새 리딩 문제를 AI가 만들어</strong> 바로 다시 풀 수 있습니다.</p>
     <div id="causeChart"></div>
+    <button class="btn solid" id="drillBtn2" style="margin-top:16px">🎯 취약 유형 AI 드릴 만들기</button>
     <div class="mock-form" style="grid-template-columns:1fr 1fr;margin-top:20px">
       <div><label class="fl" for="eArea">영역</label>
         <select id="eArea"><option>Listening</option><option>Reading</option><option>Writing</option><option>Speaking</option></select></div>
@@ -861,6 +868,11 @@ textarea.essay{min-height:290px;resize:vertical;line-height:1.8;font-size:15px}
 
   <div class="test-badge" id="rTestBadge"></div>
   <div class="fb-toggle" id="fbToggleCbt"></div>
+  <div class="rpick-bar">
+    <label class="fl" for="rPick">연습 지문</label>
+    <select id="rPick"></select>
+    <button class="btn" id="drillBtn" title="오답이 많은 유형으로 AI가 새 지문·문제를 생성합니다">취약 유형 AI 드릴</button>
+  </div>
 
   <div class="cbt-bar">
     <span class="lb" id="rTimeLb">남은 시간</span>
@@ -2120,7 +2132,60 @@ function errState(stateEl,msg){ stateEl.className="tutor-state err"; stateEl.tex
 /* ================= CBT READING ================= */
 var R={ans:{},graded:false,left:1200,id:null};
 var ROMAN=["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii","xiii","xiv","xv"];
-var SAMPLE_TEST={passage:PASSAGE,headings:HEADINGS,questions:QUESTIONS,sample:true};
+/* 업로드 없이 풀 수 있는 자체 창작 리딩 지문 라이브러리 (전부 이 앱을 위해 새로 씀) */
+var TEST_MONEY={sample:true,
+ passage:{title:"The Origins of Paper Money",src:"연습용 원본 지문 · Academic Reading 형식",paras:[
+  ["A","Money in daily use today is mostly paper or, increasingly, mere numbers on a screen, and few users pause to notice that the notes in their pockets are worth nothing in themselves. A banknote is a slip of printed cotton; its value rests entirely on the shared belief that others will accept it. This idea — that a token with no intrinsic worth can serve as money — seems modern, yet it was put into practice more than a thousand years ago in China, long before any European society was ready to trust it."],
+  ["B","The problem that paper money first solved was a physical one. Under the Tang dynasty commerce was expanding, but the coins in circulation were made of bronze and strung together in bundles that were heavy and awkward to carry over long distances. Merchants travelling to buy goods began to leave their coins with trusted agents and to carry away instead a written receipt recording the amount deposited. The receipt could be exchanged for the coins later, or handed to a third party, who could collect the money in turn. In effect, the paper began to circulate in place of the metal."],
+  ["C","At first these receipts were issued privately, but their usefulness did not escape the notice of the government. Under the Song dynasty the state took control of their production, printing official notes and promising to honour them. This step mattered because it changed the source of trust: a note was now backed not by a particular merchant, who might fail or flee, but by the authority of the state itself. For a time the notes were convertible into coin on demand, and confidence in them held."],
+  ["D","Knowledge of the Chinese notes reached Europe slowly, carried by travellers who found the practice astonishing. The most famous account came from the Venetian Marco Polo, who described how the ruler of China turned the bark of mulberry trees into money that his subjects were obliged to accept. European readers treated such reports as traveller's exaggeration. The notion that a monarch could manufacture wealth from paper struck them as closer to alchemy than to sound finance, and centuries passed before paper money was issued in Europe."],
+  ["E","Yet the very feature that made paper money convenient also made it dangerous. Because notes cost almost nothing to produce, a government short of funds faced a constant temptation to print more of them. When the quantity of notes grew faster than the goods available to buy, each note bought less, and prices climbed. Several Chinese dynasties discovered this the hard way: money that had circulated reliably lost its value once issued to excess, and public confidence, once broken, proved very hard to restore."],
+  ["F","Modern money has inherited both the promise and the peril. Almost every currency in the world is now 'fiat' money — money that is valuable because a government declares it so and because people accept it, not because it can be exchanged for gold or silver. The convenience is enormous, but the discipline required is the same one the Song administrators eventually failed to keep: to issue only as much as trust and trade can bear."]
+ ]},
+ headings:["i. A physical burden that paper removed","ii. The modern world's return to metal coins","iii. An old idea behind today's ordinary notes","iv. When the state became the guarantor","v. Foreign observers who refused to believe","vi. The temptation to print too much","vii. How coins were first manufactured","viii. A debt that inheritors still carry today","ix. Measuring the weight of bronze"],
+ questions:[
+  {g:"Questions 1–6",gi:"Choose the correct heading for each paragraph from the list below.",type:"heading",qs:[
+   {n:1,q:"Paragraph A",a:"iii",ev:"A"},{n:2,q:"Paragraph B",a:"i",ev:"B"},{n:3,q:"Paragraph C",a:"iv",ev:"C"},
+   {n:4,q:"Paragraph D",a:"v",ev:"D"},{n:5,q:"Paragraph E",a:"vi",ev:"E"},{n:6,q:"Paragraph F",a:"viii",ev:"F"}]},
+  {g:"Questions 7–10",gi:"Do the following statements agree with the information in the passage?  TRUE / FALSE / NOT GIVEN.",type:"tfng",qs:[
+   {n:7,q:"Marco Polo believed that the Chinese notes were a form of trickery.",a:"NOT GIVEN",ev:"D"},
+   {n:8,q:"The earliest paper receipts in China were produced by the government.",a:"FALSE",ev:"C"},
+   {n:9,q:"Producing paper notes was inexpensive.",a:"TRUE",ev:"E"},
+   {n:10,q:"Once public confidence in the notes collapsed, it was easily rebuilt.",a:"FALSE",ev:"E"}]},
+  {g:"Questions 11–13",gi:"Complete the summary. Write ONE WORD ONLY from the passage for each answer.",type:"gap",
+   summary:"Paper money began as a solution to a practical difficulty: bronze coins were heavy, so merchants left them with agents and carried a __11__ instead. Later the __12__ took over the printing of notes, which made people trust them more. The main danger of paper money is that printing too much makes __13__ rise.",
+   qs:[{n:11,q:"Gap 11",a:"receipt",ev:"B"},{n:12,q:"Gap 12",a:"state",ev:"C"},{n:13,q:"Gap 13",a:"prices",ev:"E"}]}
+ ]};
+
+var TEST_LEAVES={sample:true,
+ passage:{title:"Why Leaves Change Colour",src:"연습용 원본 지문 · Academic Reading 형식",paras:[
+  ["A","To a casual observer the flaming reds and yellows of an autumn wood look like the colours of decay, the visible sign of leaves dying off before winter. In fact the process is neither sudden nor accidental. It is an orderly withdrawal, carefully timed and, in part, actively manufactured by the tree. Understanding it means looking at what gives a leaf its colour in the first place, and at what a tree stands to gain by dismantling its own foliage each year."],
+  ["B","Through spring and summer a leaf is green because it is full of chlorophyll, the pigment that captures the energy of sunlight and uses it to build sugars from water and carbon dioxide. Chlorophyll is abundant and it reflects green light strongly, so it masks the other pigments that are present in the leaf at the same time. As long as the leaf is working productively, the tree keeps replacing chlorophyll as fast as it wears out, and the green persists."],
+  ["C","When autumn approaches and the leaf prepares to shut down, the tree stops renewing its chlorophyll and the existing supply breaks down. As the green fades, pigments that were in the leaf all along are uncovered. These are the carotenoids, which reflect yellow and orange light and which also assist in photosynthesis during the growing season. Their appearance in autumn is therefore not a new event but a revelation: the colour was there for months, hidden beneath the green."],
+  ["D","Red and purple leaves pose a harder question, because their pigments, the anthocyanins, are not uncovered but freshly made, at some cost, just as the leaf is about to be discarded. Why a tree should invest in manufacturing a pigment in an organ it is on the point of losing has been debated for years. One leading suggestion is that the red pigments act as a sunscreen, shielding the leaf's machinery from bright autumn light while the tree completes the delicate work of recovering nutrients from it."],
+  ["E","What sets the whole sequence in motion is chiefly the shortening of the days rather than the arrival of cold. As nights lengthen, trees respond to the changing balance of light and dark, which is a far more reliable signal of the coming season than temperature, which can swing unpredictably from one day to the next. A sharp frost can influence the brightness of the display, but it is the calendar of daylight, not the thermometer, that decides when the process begins."],
+  ["F","The final stage is a physical one. At the base of each leaf stalk the tree builds a special layer of cells, the abscission layer, which gradually severs the leaf from the branch. Before the leaf falls, though, the tree draws back into its wood the valuable substances the leaf still holds, above all nitrogen, so that they are not wasted. The dry leaf that finally drops has already surrendered most of what made it useful."]
+ ]},
+ headings:["i. Colours that were hidden all summer","ii. A signal more dependable than warmth","iii. The pigment that keeps a leaf green","iv. Reclaiming value before letting go","v. A costly colour made at the last moment","vi. An orderly process mistaken for decay","vii. How trees survive extreme cold","viii. The economic value of autumn tourism","ix. Measuring the speed of a falling leaf"],
+ questions:[
+  {g:"Questions 1–6",gi:"Choose the correct heading for each paragraph from the list below.",type:"heading",qs:[
+   {n:1,q:"Paragraph A",a:"vi",ev:"A"},{n:2,q:"Paragraph B",a:"iii",ev:"B"},{n:3,q:"Paragraph C",a:"i",ev:"C"},
+   {n:4,q:"Paragraph D",a:"v",ev:"D"},{n:5,q:"Paragraph E",a:"ii",ev:"E"},{n:6,q:"Paragraph F",a:"iv",ev:"F"}]},
+  {g:"Questions 7–10",gi:"Do the following statements agree with the information in the passage?  TRUE / FALSE / NOT GIVEN.",type:"tfng",qs:[
+   {n:7,q:"Chlorophyll hides other pigments that are also in the leaf.",a:"TRUE",ev:"B"},
+   {n:8,q:"Anthocyanins are already present in the leaf during summer.",a:"FALSE",ev:"D"},
+   {n:9,q:"Red autumn colours are more common in some countries than in others.",a:"NOT GIVEN",ev:"D"},
+   {n:10,q:"Falling temperature is the main trigger for leaves changing colour.",a:"FALSE",ev:"E"}]},
+  {g:"Questions 11–13",gi:"Complete the summary. Write ONE WORD ONLY from the passage for each answer.",type:"gap",
+   summary:"A leaf looks green because __11__ reflects green light and masks other pigments. In autumn the tree stops renewing it, revealing the yellow and orange __12__ that were present all along. What mainly triggers the change is the shortening of the __13__, not cold weather.",
+   qs:[{n:11,q:"Gap 11",a:"chlorophyll",ev:"B"},{n:12,q:"Gap 12",a:"carotenoids",ev:"C"},{n:13,q:"Gap 13",a:"days",ev:"E"}]}
+ ]};
+
+var SAMPLE_TESTS=[
+  {sample:true,passage:PASSAGE,headings:HEADINGS,questions:QUESTIONS},
+  TEST_MONEY, TEST_LEAVES
+];
+var SAMPLE_TEST=SAMPLE_TESTS[0];
 var CUR_TEST=SAMPLE_TEST;
 var FLAT=[];
 function rebuildFlat(){ FLAT=[]; QUESTIONS.forEach(function(g){ g.qs.forEach(function(q){ FLAT.push({q:q,g:g}); }); }); }
@@ -2144,7 +2209,24 @@ function loadTest(t){
   document.getElementById("rMsg").textContent = listening
     ? "오디오를 듣고 문제를 푼 뒤 ‘제출·채점’을 누르세요."
     : "시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
-  buildPassage(); buildQuestions(); rClock(); renderTestBadge();
+  buildPassage(); buildQuestions(); rClock(); renderTestBadge(); renderPassagePicker();
+}
+
+/* 연습 지문 선택기(자체 창작 지문 라이브러리) */
+function renderPassagePicker(){
+  var sel=document.getElementById("rPick"); if(!sel) return;
+  sel.innerHTML="";
+  SAMPLE_TESTS.forEach(function(t,i){
+    var o=document.createElement("option"); o.value="s"+i;
+    o.textContent="지문 "+(i+1)+". "+t.passage.title; sel.appendChild(o);
+  });
+  if(!CUR_TEST.sample){
+    var o2=document.createElement("option"); o2.value="cur";
+    o2.textContent = CUR_TEST.kind==="listening" ? "현재: 리스닝" : "현재: "+(CUR_TEST.passage.title||"내 문제");
+    sel.appendChild(o2); sel.value="cur";
+  } else {
+    var idx=SAMPLE_TESTS.indexOf(CUR_TEST); sel.value="s"+(idx<0?0:idx);
+  }
 }
 
 function renderTestBadge(){
@@ -2467,6 +2549,44 @@ document.getElementById("rReset").addEventListener("click",function(){
     : "시작을 누르면 20분 타이머가 돌아갑니다. 실전과 같은 압박으로 푸세요.";
   buildQuestions(); rClock();
 });
+
+/* 연습 지문 선택 */
+document.getElementById("rPick").addEventListener("change",function(){
+  var v=this.value; if(v && v.charAt(0)==="s"){ loadTest(SAMPLE_TESTS[+v.slice(1)]); scrollToPanel(/CBT 리딩/); }
+});
+
+/* ===== 취약 유형 AI 드릴: 오답 원인을 겨냥해 새 문제를 생성 ===== */
+var DRILL_TOPICS=["language and the brain","the history of maps","ocean currents","the psychology of habit",
+ "ancient trade routes","how vaccines work","the science of sleep","urban green space",
+ "the domestication of plants","memory and forgetting","the study of volcanoes","the economics of recycling",
+ "birdsong","the invention of the clock","coral reefs","the spread of writing systems"];
+function weakCause(){
+  var c={}; (S.errors||[]).forEach(function(e){ c[e.cause]=(c[e.cause]||0)+1; });
+  var top="", mx=0; Object.keys(c).forEach(function(k){ if(c[k]>mx){ mx=c[k]; top=k; } });
+  return top || "함정";
+}
+function startDrill(){
+  var st=document.getElementById("rState");
+  var cause=weakCause();
+  var rEr=(S.errors||[]).filter(function(e){ return e.area==="Reading"; });
+  var pool=(rEr.length?rEr:(S.errors||[])).slice(-8);
+  var notes=pool.map(function(e){ return "· ("+e.cause+") "+(e.note||""); }).join("\n");
+  var topic=DRILL_TOPICS[Math.floor(Math.random()*DRILL_TOPICS.length)];
+  setView("study");
+  if(S.fbmode!=="ai"){ S.fbmode="ai"; save(); renderFbToggle(); }   // 생성 문제는 AI만 해설 가능
+  scrollToPanel(/CBT 리딩/);
+  busy(st,true,"AI가 ‘"+cause+"’ 약점을 겨냥한 새 지문·문제를 만드는 중입니다… (20~40초)");
+  document.getElementById("rFeedback").innerHTML="";
+  askTutor("generate",{area:"Reading",cause:cause,notes:notes,topic:topic}).then(function(res){
+    var test; try{ test=importToTest(res); }catch(e){ errState(st,e.message); return; }
+    test.passage.title="AI 드릴 · "+cause+" — "+(test.passage.title||"Reading");
+    busy(st,false); loadTest(test);
+    document.getElementById("rMsg").textContent="AI가 만든 ‘"+cause+"’ 집중 드릴입니다. 풀고 제출하면 AI가 해설합니다.";
+    scrollToPanel(/CBT 리딩/);
+  }).catch(function(e){ errState(st,(e&&e.message)||"드릴 생성에 실패했습니다."); });
+}
+document.getElementById("drillBtn").addEventListener("click",startDrill);
+document.getElementById("drillBtn2").addEventListener("click",startDrill);
 
 /* ================= PDF 문제집 (내 파일) ================= */
 var PDFJS_URL="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs";
@@ -3198,7 +3318,7 @@ buildPassage(); buildQuestions(); rClock(); renderTestBadge(); renderPdfSaved();
   var ds=store.get(DRAFT_S,""); if(ds){ document.getElementById("sText").value=ds; countS(); }
 })();
 renderDday(); renderRuler(); renderTasks(); renderGrid(); renderMocks(); renderErrors(); renderClock();
-renderLaunch(); renderVocab(); renderFbToggle();
+renderLaunch(); renderVocab(); renderFbToggle(); renderPassagePicker();
 // 로딩·오류·결과 영역을 스크린리더가 실시간으로 읽도록
 ["rState","wState","sState","pdfState"].forEach(function(id){
   var e=document.getElementById(id);
