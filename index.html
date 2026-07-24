@@ -1667,13 +1667,22 @@ function parseJSON(txt){
   return null;
 }
 
+/* 함수 기본 주소(/.netlify/functions/tutor)로 직접 POST한다. 일부 배포에서
+   /api/tutor 리라이트가 GET은 통과시켜도 POST를 함수로 못 넘기는 경우가 있어,
+   리라이트를 거치지 않는 기본 주소를 1순위로 쓴다. 그게 막혀 있으면(404)
+   /api/tutor 리라이트로 한 번 더 시도한다. */
+function tutorFetch(bodyStr){
+  var opt={ method:"POST", headers:{"content-type":"application/json"}, body:bodyStr };
+  return fetch("/.netlify/functions/tutor",opt).then(function(r){
+    if(r.status===404) return fetch("/api/tutor",opt);   // 기본 주소가 막혀 있으면 리라이트 경로
+    return r;
+  });
+}
+
 function askTutor(task,payload){
   var pass=store.get("ielts7-pass","");
   var primaryReason=null;                              // "missing"(404/405) | "network"(TypeError)
-  return fetch("/api/tutor",{
-    method:"POST",headers:{"content-type":"application/json"},
-    body:JSON.stringify({task:task,payload:payload,passcode:pass})
-  }).then(function(r){
+  return tutorFetch(JSON.stringify({task:task,payload:payload,passcode:pass})).then(function(r){
     if(r.status===404||r.status===405){ primaryReason="missing"; return null; }  // 함수 미배포 → 폴백
     return r.json().then(function(d){
       if(!r.ok) throw new Error(d.error||("HTTP "+r.status));
